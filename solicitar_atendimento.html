@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitar atendimento | SESI Acolhe{% endblock %}
+
+{% block content %}
+
+<section class="form-page">
+    <a href="{{ url_for('inicio') }}" class="back-link">
+        ← Voltar ao início
+    </a>
+
+    <div class="form-heading">
+        <span class="tag">💜 Você merece ser ouvido</span>
+        <h1>Solicitar atendimento</h1>
+        <p>
+            Este espaço foi pensado para estudantes que desejam conversar
+            com a equipe de acolhimento da escola.
+        </p>
+    </div>
+
+    {% if sucesso %}
+        <div class="success-box">
+            <div class="success-icon">✓</div>
+            <h2>Solicitação registrada!</h2>
+            <p>
+                Sua solicitação foi registrada no sistema.
+                A equipe responsável poderá analisá-la quando o painel
+                de atendimento estiver disponível.
+            </p>
+
+            <a href="{{ url_for('inicio') }}" class="btn btn-primary">
+                Voltar ao início
+            </a>
+        </div>
+
+    {% else %}
+
+        <form method="POST" class="report-form">
+            <div class="privacy-notice">
+                <

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Área profissional | SESI Acolhe{% endblock %}
+
+{% block content %}
+
+<section class="form-page login-page">
+    <a href="{{ url_for('inicio') }}" class="back-link">
+        ← Voltar ao início
+    </a>
+
+    <div class="login-card">
+        <div class="login-icon">🔐</div>
+
+        <span class="tag">Área restrita</span>
+
+        <h1>Acesso profissional</h1>
+
+        <p>
+            Área destinada aos profissionais autorizados
+            responsáveis pelo acolhimento dos estudantes.
+        </p>
+
+        <div class="privacy-notice">
+            <span>🛡️</span>
+            <div>
+                <strong>Acesso protegido</strong>
+                <p>
+                    O sistema de autenticação está em desenvolvimento.
+                    O acesso aos relatos ainda não está disponível.
+                </p>
+            </div>
+        </div>
+
+        <button class="btn btn-primary submit-button" disabled>
+            Login ainda não disponível
+        </button>
+
+        <a href="{{ url_for('inicio') }}" class="login-home-link">
+            Voltar para a página inicial
+        </a>
+    </div>
+</section>
+
+{% endblock %}

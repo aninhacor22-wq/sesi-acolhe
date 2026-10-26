@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar relato | SESI Acolhe{% endblock %}
+
+{% block content %}
+
+<section class="form-page">
+    <a href="{{ url_for('inicio') }}" class="back-link">
+        ← Voltar ao início
+    </a>
+
+    <div class="form-heading">
+        <span class="tag">💜 Estamos aqui para ouvir</span>
+        <h1>Registrar um relato</h1>
+        <p>
+            Compartilhe a situação que você deseja comunicar.
+            Preencha os campos com as informações necessárias.
+        </p>
+    </div>
+
+    {% if codigo_confirmacao %}
+        <div class="success-box">
+            <div class="success-icon">✓</div>
+
+            <h2>Relato registrado!</h2>
+
+            <p>
+                Seu relato anônimo foi salvo no sistema.
+                Guarde o código abaixo para identificar o registro.
+            </p>
+
+            <div class="tracking-code">
+                {{ codigo_confirmacao }}
+            </div>
+
+            <p class="small-note">
+                Anote esse código em um lugar seguro.
+                O acompanhamento do relato ainda será implementado.
+            </p>
+
+            <a href="{{ url_for('inicio') }}" class="btn btn-primary">
+                Voltar ao início
+            </a>
+        </div>
+
+    {% else %}
+
+        <form method="POST" class="report-form">
+            <div class="privacy-notice">
+                <span>🔒</span>
+                <div>
+                    <strong>Privacidade importa</strong>
+                    <p>
+                        Neste protótipo, os relatos são anônimos.
+                        Envie apenas informações necessárias para compreender
+                        a situação.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="titulo">Título do relato *</label>
+
+                <input
+                    type="text"
+                    id="titulo"
+                    name="titulo"
+                    maxlength="150"
+                    placeholder="Resuma a situação"
+                    value="{{ request.form.get('titulo', '') }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="categoria">Categoria *</label>
+
+                <select id="categoria" name="categoria" required>
+                    <option value="">Selecione uma categoria</option>
+
+                    {% for opcao in [
+                        'Bullying',
+                        'Assédio moral',
+                        'Conflito',
+                        'Problema com profissional',
+                        'Insegurança ou desconforto',
+                        'Outro'
+                    ] %}
+                        <option
+                            value="{{ opcao }}"
+                            {% if request.form.get('categoria') == opcao %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ opcao }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="descricao">Descrição da situação *</label>
+
+                <textarea
+                    id="descricao"
+                    name="descricao"
+                    rows="6"
+                    maxlength="5000"
+                    placeholder="Conte o que aconteceu, usando apenas os detalhes necessários..."
+                    required
+                >{{ request.form.get('descricao', '') }}</textarea>
+
+                <small>
+                    Não inclua senhas ou dados pessoais desnecessários.
+                </small>
+            </div>
+
+            <fieldset class="form-group anonymity-options">
+                <legend>Como deseja registrar o relato?</legend>
+
+                <label class="radio-option">
+                    <input
+                        type="radio"
+                        name="anonimo"
+                        value="sim"
+                        {% if request.form.get('anonimo', 'sim') == 'sim' %}
+                            checked
+                        {% endif %}
+                    >
+
+                    <span>
+                        <strong>Relato anônimo</strong>
+                        <small>
+                            Seu relato não será associado a um usuário cadastrado.
+                        </small>
+                    </span>
+                </label>
+
+                <label class="radio-option unavailable-option">
+                    <input
+                        type="radio"
+                        name="anonimo"
+                        value="nao"
+                        {% if request.form.get('anonimo') == 'nao' %}
+                            checked
+                        {% endif %}
+                    >
+
+                    <span>
+                        <strong>Relato identificado</strong>
+                        <small>
+                            Indisponível nesta versão inicial.
+                            Será habilitado após a criação do cadastro seguro.
+                        </small>
+                    </span>
+                </label>
+            </fieldset>
+
+            <p class="form-disclaimer">
+                * Campos obrigatórios. O sistema está em desenvolvimento
+                e ainda não substitui os canais oficiais de acolhimento da escola.
+            </p>
+
+            <button type="submit" class="btn btn-primary submit-button">
+                Enviar relato
+            </button>
+        </form>
+
+    {% endif %}
+</section>
+
+{% endblock %}

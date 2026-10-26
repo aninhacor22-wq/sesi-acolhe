@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}SESI Acolhe{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <a href="{{ url_for('inicio') }}" class="brand">
+            <span class="brand-icon">💜</span>
+            <span>SESI <strong>Acolhe</strong></span>
+        </a>
+
+        <nav>
+            <a href="{{ url_for('inicio') }}">Início</a>
+            <a href="{{ url_for('relatar') }}">Relatos</a>
+            <a href="{{ url_for('solicitar_atendimento') }}">Atendimento</a>
+            <a href="{{ url_for('login') }}" class="nav-login">Área profissional</a>
+        </nav>
+    </header>
+
+   <main class="container">
+
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% if mensagens %}
+            <div class="flash-container" role="status">
+                {% for categoria, mensagem in mensagens %}
+                    <div class="flash-message flash-{{ categoria }}">
+                        {{ mensagem }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+</main>
+
+    <footer class="footer">
+        <p>💜 SESI Acolhe — Escuta, respeito e acolhimento.</p>
+        <p>Um projeto para promover o bem-estar no ambiente escolar.</p>
+    </footer>
+</body>
+</html>

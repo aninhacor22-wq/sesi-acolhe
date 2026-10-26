@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Início | SESI Acolhe{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-text">
+        <span class="tag">💜 Um espaço de escuta e acolhimento</span>
+
+        <h1>Você não precisa enfrentar tudo sozinho.</h1>
+
+        <p>
+            O SESI Acolhe é um espaço pensado para ouvir você,
+            acolher suas necessidades e aproximar os estudantes
+            da equipe de apoio da escola.
+        </p>
+
+        <div class="hero-buttons">
+            <a href="{{ url_for('relatar') }}" class="btn btn-primary">
+                Quero fazer um relato
+            </a>
+
+            <a href="{{ url_for('solicitar_atendimento') }}" class="btn btn-secondary">
+                Solicitar atendimento
+            </a>
+        </div>
+    </div>
+
+    <div class="hero-card">
+        <div class="heart">💜</div>
+        <h2>Você importa!</h2>
+        <p>
+            Sua voz merece ser ouvida. Este é um espaço para buscar
+            apoio com respeito, cuidado e responsabilidade.
+        </p>
+        <span>Escuta • Respeito • Acolhimento</span>
+    </div>
+</section>
+
+<section class="features">
+    <h2>Como podemos ajudar?</h2>
+    <p class="section-description">
+        Escolha a opção que melhor atende à sua necessidade.
+    </p>
+
+    <div class="feature-grid">
+        <article class="feature-card">
+            <div class="feature-icon">📝</div>
+            <h3>Registrar um relato</h3>
+            <p>
+                Compartilhe uma situação que esteja causando
+                desconforto ou preocupação.
+            </p>
+            <a href="{{ url_for('relatar') }}">Fazer um relato →</a>
+        </article>
+
+        <article class="feature-card">
+            <div class="feature-icon">🤝</div>
+            <h3>Solicitar acolhimento</h3>
+            <p>
+                Registre uma solicitação para conversar com a
+                equipe responsável pelo acolhimento.
+            </p>
+            <a href="{{ url_for('solicitar_atendimento') }}">
+                Solicitar atendimento →
+            </a>
+        </article>
+
+        <article class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>Privacidade e cuidado</h3>
+            <p>
+                As informações devem ser tratadas com cuidado,
+                com acesso restrito às pessoas autorizadas.
+            </p>
+            <span class="feature-note">Respeito em primeiro lugar</span>
+        </article>
+    </div>
+</section>
+
+<section class="final-message">
+    <h2>Um ambiente melhor começa com a escuta. 💜</h2>
+    <p>Você merece estudar em um ambiente seguro, respeitoso e acolhedor.</p>
+</section>
+{% endblock %}
