@@ -33,7 +33,7 @@ Muitos estudantes enfrentam dificuldades emocionais, sociais ou escolares e nem 
 ## 🛠️ 3. Tecnologias utilizadas
 
 - **SQL:** linguagem utilizada para definir e manipular estruturas de bancos de dados.
-- **SQLite:** sistema de gerenciamento de banco de dados, caso confirmado como a tecnologia adotada no script do projeto.
+- **SQLite:** sistema de gerenciamento de banco de dados utilizado na modelagem proposta.
 - **Git:** ferramenta de controle de versão.
 - **GitHub:** plataforma utilizada para hospedar o repositório e compartilhar os documentos.
 - **Markdown:** linguagem de marcação utilizada para estruturar a documentação no README.
@@ -61,7 +61,7 @@ O **Diagrama Entidade-Relacionamento (DER)** representa visualmente a estrutura 
 ### Documentos da modelagem
 
 - `DER.png`: representação visual do Diagrama Entidade-Relacionamento.
-- `script.sql`: comandos SQL para criação das estruturas do banco de dados.
+- `script.sql`: contém os comandos SQL para criação das tabelas, definição dos relacionamentos, criação de índices e inserção de dados fictícios para demonstração.
 - `SESI_Acolhe_Modelagem_Banco_Dados.pdf`: documentação da modelagem.
 
 ## 📑 6. Documentação do projeto
