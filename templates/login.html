@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}Área profissional | SESI Acolhe{% endblock %}
@@ -5,11 +6,13 @@
 {% block content %}
 
 <section class="form-page login-page">
+
     <a href="{{ url_for('inicio') }}" class="back-link">
         ← Voltar ao início
     </a>
 
     <div class="login-card">
+
         <div class="login-icon">🔐</div>
 
         <span class="tag">Área restrita</span>
@@ -17,29 +20,64 @@
         <h1>Acesso profissional</h1>
 
         <p>
-            Área destinada aos profissionais autorizados
-            responsáveis pelo acolhimento dos estudantes.
+            Entre com suas credenciais para acessar a área profissional.
         </p>
 
         <div class="privacy-notice">
             <span>🛡️</span>
             <div>
-                <strong>Acesso protegido</strong>
+                <strong>Acesso autorizado</strong>
                 <p>
-                    O sistema de autenticação está em desenvolvimento.
-                    O acesso aos relatos ainda não está disponível.
+                    Esta área é destinada aos profissionais e administradores
+                    autorizados do SESI Acolhe.
                 </p>
             </div>
         </div>
 
-        <button class="btn btn-primary submit-button" disabled>
-            Login ainda não disponível
-        </button>
+        <form method="POST" class="report-form">
+
+            <div class="form-group">
+                <label for="email">E-mail profissional</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value="{{ request.form.get('email', '') }}"
+                    autocomplete="username"
+                    maxlength="254"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="senha">Senha</label>
+
+                <input
+                    type="password"
+                    id="senha"
+                    name="senha"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button
+                type="submit"
+                class="btn btn-primary submit-button"
+            >
+                Entrar
+            </button>
+
+        </form>
 
         <a href="{{ url_for('inicio') }}" class="login-home-link">
             Voltar para a página inicial
         </a>
+
     </div>
+
 </section>
 
 {% endblock %}
+```
