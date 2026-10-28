@@ -1,0 +1,82 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}SESI Acolhe{% endblock %}</title>
+
+    <meta name="description" content="SESI Acolhe: um espaço de escuta, acolhimento e encaminhamento para estudantes.">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <header class="site-header">
+        <nav class="navbar">
+
+            <a href="{{ url_for('inicio') }}" class="logo">
+                <span class="logo-icon">💜</span>
+                <span>SESI <strong>Acolhe</strong></span>
+            </a>
+
+            <button class="menu-toggle"
+                    type="button"
+                    aria-label="Abrir menu"
+                    onclick="document.querySelector('.nav-links').classList.toggle('active')">
+                ☰
+            </button>
+
+            <div class="nav-links">
+                <a href="{{ url_for('inicio') }}">Início</a>
+                <a href="{{ url_for('relatar') }}">Relatar situação</a>
+                <a href="{{ url_for('solicitar_atendimento') }}">Solicitar atendimento</a>
+                <a href="{{ url_for('login') }}" class="nav-login">Área profissional</a>
+            </div>
+
+        </nav>
+    </header>
+
+    <main class="main-content">
+
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+                <div class="flash-container">
+                    {% for categoria, mensagem in mensagens %}
+                        <div class="flash-message {{ categoria }}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <a href="{{ url_for('inicio') }}" class="footer-logo">
+                💜 SESI Acolhe
+            </a>
+
+            <p>Ouvir • Acolher • Encaminhar</p>
+
+            <p class="footer-note">
+                Um espaço dedicado ao acolhimento e ao bem-estar no ambiente escolar.
+            </p>
+
+            <span class="copyright">
+                Projeto educacional desenvolvido por estudantes.
+            </span>
+        </div>
+    </footer>
+
+</body>
+</html>
+```
