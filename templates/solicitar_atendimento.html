@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}Solicitar atendimento | SESI Acolhe{% endblock %}
@@ -24,8 +25,8 @@
             <h2>Solicitação registrada!</h2>
             <p>
                 Sua solicitação foi registrada no sistema.
-                A equipe responsável poderá analisá-la quando o painel
-                de atendimento estiver disponível.
+                Este protótipo ainda não possui um painel de acompanhamento
+                pela equipe escolar.
             </p>
 
             <a href="{{ url_for('inicio') }}" class="btn btn-primary">
@@ -37,4 +38,43 @@
 
         <form method="POST" class="report-form">
             <div class="privacy-notice">
-                <
+                <span>🔒</span>
+                <div>
+                    <strong>Um espaço de acolhimento</strong>
+                    <p>
+                        Compartilhe apenas as informações necessárias.
+                        Este protótipo ainda está em desenvolvimento.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="descricao">
+                    Conte como podemos ajudar *
+                </label>
+
+                <textarea
+                    id="descricao"
+                    name="descricao"
+                    rows="6"
+                    maxlength="3000"
+                    placeholder="Descreva brevemente o motivo da solicitação..."
+                    required
+                >{{ request.form.get('descricao', '') }}</textarea>
+            </div>
+
+            <p class="form-disclaimer">
+                * Campo obrigatório. O envio não garante agendamento
+                automático de atendimento.
+            </p>
+
+            <button type="submit" class="btn btn-primary submit-button">
+                Enviar solicitação
+            </button>
+        </form>
+
+    {% endif %}
+</section>
+
+{% endblock %}
+```
