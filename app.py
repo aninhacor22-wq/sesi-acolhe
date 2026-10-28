@@ -1,57 +1,150 @@
-@app.route("/solicitar-atendimento", methods=["GET", "POST"])
-def solicitar_atendimento():
-    if request.method == "POST":
-        descricao = request.form.get("descricao", "").strip()
+```python
+from pathlib import Path
+import os
+import secrets
+import sqlite3
 
-        if not descricao:
-            flash(
-                "Preencha o campo antes de enviar a solicitação.",
-                "erro"
-            )
-            return render_template("solicitar_atendimento.html")
+from flask import (
+    Flask,
+    render_template,
+    g,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session
+)
 
-        if len(descricao) > 3000:
-            flash(
-                "A descrição deve ter no máximo 3000 caracteres.",
-                "erro"
-            )
-            return render_template("solicitar_atendimento.html")
+from werkzeug.security import check_password_hash
 
-        banco = conectar_banco()
 
-        try:
-            banco.execute(
-                """
-                INSERT INTO solicitacoes_atendimento (
-                    id_usuario,
-                    id_relato,
-                    descricao,
-                    status
-                )
-                VALUES (NULL, NULL, ?, 'Pendente')
-                """,
-                (descricao,)
-            )
+# =====================================================
+# CONFIGURAÇÕES DA APLICAÇÃO
+# =====================================================
 
-            banco.commit()
+BASE_DIR = Path(__file__).resolve().parent
+DATABASE = BASE_DIR / "sesi_acolhe.db"
 
-        except sqlite3.Error:
-            banco.rollback()
+app = Flask(__name__)
 
-            app.logger.exception(
-                "Erro ao registrar solicitação de atendimento."
-            )
+# A chave deve ser definida por variável de ambiente.
+# Não publique uma chave secreta real no GitHub.
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
-            flash(
-                "Não foi possível registrar a solicitação.",
-                "erro"
-            )
+if not app.config["SECRET_KEY"]:
+    # Permite executar o protótipo localmente.
+    # As sessões serão invalidadas ao reiniciar a aplicação.
+    app.config["SECRET_KEY"] = secrets.token_hex(32)
+    app.logger.warning(
+        "SECRET_KEY temporária: as sessões serão invalidadas "
+        "ao reiniciar a aplicação."
+    )
 
-            return render_template("solicitar_atendimento.html")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-        return render_template(
-            "solicitar_atendimento.html",
-            sucesso=True
+
+# =====================================================
+# CONEXÃO COM O BANCO DE DADOS
+# =====================================================
+
+def conectar_banco():
+    if "db" not in g:
+        g.db = sqlite3.connect(DATABASE)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA foreign_keys = ON")
+
+    return g.db
+
+
+@app.teardown_appcontext
+def fechar_banco(erro=None):
+    banco = g.pop("db", None)
+
+    if banco is not None:
+        banco.close()
+
+
+def inicializar_banco():
+    caminho_sql = BASE_DIR / "script.sql"
+
+    if not caminho_sql.exists():
+        raise FileNotFoundError(
+            "O arquivo script.sql não foi encontrado."
         )
 
-    return render_template("solicitar_atendimento.html")
+    with app.app_context():
+        banco = conectar_banco()
+        script = caminho_sql.read_text(encoding="utf-8")
+        banco.executescript(script)
+        banco.commit()
+
+
+# =====================================================
+# PÁGINA INICIAL
+# =====================================================
+
+@app.route("/")
+def inicio():
+    return render_template("index.html")
+
+
+# =====================================================
+# REGISTRO DE RELATOS ANÔNIMOS
+# =====================================================
+
+@app.route("/relatar", methods=["GET", "POST"])
+def relatar():
+    if request.method == "POST":
+        titulo = request.form.get("titulo", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+        descricao = request.form.get("descricao", "").strip()
+        anonimato = request.form.get("anonimo", "sim")
+
+        categorias_validas = [
+            "Bullying",
+            "Assédio moral",
+            "Conflito",
+            "Problema com profissional",
+            "Insegurança ou desconforto",
+            "Outro"
+        ]
+
+        if not titulo or not categoria or not descricao:
+            flash(
+                "Preencha todos os campos obrigatórios.",
+                "erro"
+            )
+            return render_template("relatar.html")
+
+        if len(titulo) > 150:
+            flash(
+                "O título deve ter no máximo 150 caracteres.",
+                "erro"
+            )
+            return render_template("relatar.html")
+
+        if len(descricao) > 5000:
+            flash(
+                "A descrição deve ter no máximo 5000 caracteres.",
+                "erro"
+            )
+            return render_template("relatar.html")
+
+        if categoria not in categorias_validas:
+            flash(
+                "Selecione uma categoria válida.",
+                "erro"
+            )
+            return render_template("relatar.html")
+
+        # Relatos identificados ainda não são aceitos,
+        # pois o cadastro seguro de estudantes não foi implementado.
+        if anonimato != "sim":
+            flash(
+                "O envio identificado ainda não está disponível.",
+                "aviso"
+            )
+            return render_template("relatar.html")
+
+        codigo = "
