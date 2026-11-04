@@ -1,0 +1,179 @@
+
+{% extends "base.html" %}
+
+{% block title %}Visualizar relato | SESI Acolhe{% endblock %}
+
+{% block content %}
+
+<section class="detail-page">
+
+    <a href="{{ url_for('painel') }}" class="back-link">
+        ← Voltar ao painel
+    </a>
+
+    <div class="detail-heading">
+
+        <div>
+            <span class="section-label">ÁREA PROFISSIONAL</span>
+            <h1>Detalhes do relato</h1>
+            <p>Consulte as informações e atualize o acompanhamento.</p>
+        </div>
+
+        <span class="detail-code">
+            {{ relato['codigo_acompanhamento'] }}
+        </span>
+
+    </div>
+
+
+    <!-- INFORMAÇÕES PRINCIPAIS -->
+
+    <div class="detail-card">
+
+        <div class="detail-card-heading">
+            <div>
+                <span class="section-label">REGISTRO RECEBIDO</span>
+                <h2>{{ relato['titulo'] }}</h2>
+            </div>
+
+            <span class="status-tag">
+                {{ relato['status'] }}
+            </span>
+        </div>
+
+        <div class="detail-information">
+
+            <div class="detail-field">
+                <span>Categoria</span>
+                <strong>{{ relato['categoria'] }}</strong>
+            </div>
+
+            <div class="detail-field">
+                <span>Data de envio</span>
+                <strong>{{ relato['data_criacao'] }}</strong>
+            </div>
+
+            <div class="detail-field">
+                <span>Tipo de identificação</span>
+
+                <strong>
+                    {% if relato['anonimo'] == 1 %}
+                        Anônimo
+                    {% else %}
+                        Identificado
+                    {% endif %}
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- IDENTIFICAÇÃO -->
+
+    {% if relato['anonimo'] == 0 %}
+
+    <div class="detail-card">
+
+        <span class="section-label">IDENTIFICAÇÃO</span>
+        <h2>Dados informados pelo estudante</h2>
+
+        <div class="detail-information">
+
+            <div class="detail-field">
+                <span>Nome</span>
+                <strong>{{ relato['nome_identificado'] or 'Não informado' }}</strong>
+            </div>
+
+            <div class="detail-field">
+                <span>E-mail</span>
+                <strong>{{ relato['email_identificado'] or 'Não informado' }}</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- DESCRIÇÃO -->
+
+    <div class="detail-card">
+
+        <span class="section-label">DESCRIÇÃO</span>
+        <h2>Relato do estudante</h2>
+
+        <div class="detail-description">
+            {{ relato['descricao'] }}
+        </div>
+
+    </div>
+
+
+    <!-- ATUALIZAÇÃO DE STATUS -->
+
+    <div class="detail-card status-update-card">
+
+        <div>
+            <span class="section-label">ACOMPANHAMENTO</span>
+            <h2>Atualizar situação do relato</h2>
+
+            <p>
+                Selecione o status que representa o andamento atual
+                deste registro.
+            </p>
+        </div>
+
+        <form
+            method="POST"
+            action="{{ url_for('atualizar_status', id_relato=relato['id_relato']) }}"
+            class="status-update-form"
+        >
+
+            <label for="status">Status do relato</label>
+
+            <select name="status" id="status" required>
+
+                {% for status in [
+                    'Recebido',
+                    'Em análise',
+                    'Encaminhado',
+                    'Em acompanhamento',
+                    'Finalizado'
+                ] %}
+
+                    <option
+                        value="{{ status }}"
+                        {% if relato['status'] == status %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ status }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <button type="submit" class="btn btn-primary">
+                Salvar atualização
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <div class="dashboard-note">
+        <span>🔒</span>
+        <p>
+            Este registro contém informações confidenciais.
+            Compartilhe seu conteúdo somente com profissionais autorizados.
+        </p>
+    </div>
+
+</section>
+
+{% endblock %}
