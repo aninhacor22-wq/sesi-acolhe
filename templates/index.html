@@ -1,85 +1,277 @@
+
 {% extends "base.html" %}
 
 {% block title %}Início | SESI Acolhe{% endblock %}
 
 {% block content %}
-<section class="hero">
-    <div class="hero-text">
-        <span class="tag">💜 Um espaço de escuta e acolhimento</span>
 
-        <h1>Você não precisa enfrentar tudo sozinho.</h1>
+<!-- APRESENTAÇÃO PRINCIPAL -->
+
+<section class="hero">
+
+    <div class="hero-text">
+
+        <span class="tag">
+            <span>✦</span> UM ESPAÇO DE ESCUTA E ACOLHIMENTO
+        </span>
+
+        <h1>
+            Sua voz importa.
+            <span>Você merece ser ouvido.</span>
+        </h1>
 
         <p>
-            O SESI Acolhe é um espaço pensado para ouvir você,
-            acolher suas necessidades e aproximar os estudantes
-            da equipe de apoio da escola.
+            O SESI Acolhe é um espaço criado para aproximar
+            os estudantes da equipe de apoio da escola,
+            oferecendo um caminho para compartilhar situações
+            e buscar acolhimento com respeito e responsabilidade.
         </p>
 
         <div class="hero-buttons">
-            <a href="{{ url_for('relatar') }}" class="btn btn-primary">
-                Quero fazer um relato
+
+            <a href="{{ url_for('relatar') }}"
+               class="btn btn-primary">
+                Fazer um relato
+                <span>→</span>
             </a>
 
-            <a href="{{ url_for('solicitar_atendimento') }}" class="btn btn-secondary">
+            <a href="{{ url_for('solicitar_atendimento') }}"
+               class="btn btn-secondary">
                 Solicitar atendimento
             </a>
+
         </div>
+
+        <div class="hero-trust">
+            <span>♡</span>
+            Um espaço de respeito, escuta e cuidado.
+        </div>
+
     </div>
 
-    <div class="hero-card">
-        <div class="heart">💜</div>
-        <h2>Você importa!</h2>
-        <p>
-            Sua voz merece ser ouvida. Este é um espaço para buscar
-            apoio com respeito, cuidado e responsabilidade.
-        </p>
-        <span>Escuta • Respeito • Acolhimento</span>
+
+    <div class="hero-visual">
+
+        <div class="hero-decoration decoration-one"></div>
+        <div class="hero-decoration decoration-two"></div>
+
+        <div class="hero-card">
+
+            <div class="hero-card-icon">
+                💜
+            </div>
+
+            <span class="hero-card-label">
+                SESI ACOLHE
+            </span>
+
+            <h2>
+                Você não precisa passar por tudo sozinho.
+            </h2>
+
+            <p>
+                Pedir apoio também é uma forma de cuidar de si.
+            </p>
+
+            <div class="hero-card-divider"></div>
+
+            <div class="hero-card-footer">
+                <span>♡</span>
+                <span>Ouvir • Acolher • Encaminhar</span>
+            </div>
+
+        </div>
+
     </div>
+
 </section>
+
+
+<!-- FRASE DE DESTAQUE -->
+
+<section class="welcome-strip">
+
+    <div class="welcome-icon">✦</div>
+
+    <div>
+        <strong>Um espaço para você.</strong>
+        <p>
+            Cada estudante merece ser tratado com atenção,
+            respeito e dignidade.
+        </p>
+    </div>
+
+</section>
+
+
+<!-- FUNCIONALIDADES -->
 
 <section class="features">
-    <h2>Como podemos ajudar?</h2>
-    <p class="section-description">
-        Escolha a opção que melhor atende à sua necessidade.
-    </p>
+
+    <div class="section-heading">
+
+        <span class="section-label">COMO PODEMOS AJUDAR?</span>
+
+        <h2>
+            Encontre o apoio que você precisa.
+        </h2>
+
+        <p class="section-description">
+            Escolha uma das opções abaixo para começar.
+        </p>
+
+    </div>
+
 
     <div class="feature-grid">
+
         <article class="feature-card">
-            <div class="feature-icon">📝</div>
+
+            <div class="feature-icon feature-purple">
+                <span>✎</span>
+            </div>
+
+            <span class="feature-number">01</span>
+
             <h3>Registrar um relato</h3>
+
             <p>
                 Compartilhe uma situação que esteja causando
-                desconforto ou preocupação.
+                preocupação, desconforto ou insegurança.
             </p>
-            <a href="{{ url_for('relatar') }}">Fazer um relato →</a>
-        </article>
 
-        <article class="feature-card">
-            <div class="feature-icon">🤝</div>
-            <h3>Solicitar acolhimento</h3>
-            <p>
-                Registre uma solicitação para conversar com a
-                equipe responsável pelo acolhimento.
-            </p>
-            <a href="{{ url_for('solicitar_atendimento') }}">
-                Solicitar atendimento →
+            <a href="{{ url_for('relatar') }}" class="feature-link">
+                Quero relatar
+                <span>→</span>
             </a>
+
         </article>
 
+
         <article class="feature-card">
-            <div class="feature-icon">🔒</div>
-            <h3>Privacidade e cuidado</h3>
+
+            <div class="feature-icon feature-pink">
+                <span>♡</span>
+            </div>
+
+            <span class="feature-number">02</span>
+
+            <h3>Solicitar acolhimento</h3>
+
             <p>
-                As informações devem ser tratadas com cuidado,
-                com acesso restrito às pessoas autorizadas.
+                Faça uma solicitação para conversar com
+                a equipe responsável pelo acolhimento.
             </p>
-            <span class="feature-note">Respeito em primeiro lugar</span>
+
+            <a href="{{ url_for('solicitar_atendimento') }}"
+               class="feature-link">
+                Pedir atendimento
+                <span>→</span>
+            </a>
+
         </article>
+
+
+        <article class="feature-card">
+
+            <div class="feature-icon feature-blue">
+                <span>⌕</span>
+            </div>
+
+            <span class="feature-number">03</span>
+
+            <h3>Acompanhar um relato</h3>
+
+            <p>
+                Consulte o andamento do seu relato
+                utilizando o código recebido no envio.
+            </p>
+
+            <a href="{{ url_for('acompanhar') }}"
+               class="feature-link">
+                Consultar andamento
+                <span>→</span>
+            </a>
+
+        </article>
+
     </div>
+
 </section>
+
+
+<!-- COMPROMISSO DO PROJETO -->
+
+<section class="values-section">
+
+    <div class="values-content">
+
+        <span class="section-label">
+            NOSSO COMPROMISSO
+        </span>
+
+        <h2>
+            Acolher começa com uma escuta verdadeira.
+        </h2>
+
+        <p>
+            Acreditamos que um ambiente escolar melhor
+            é construído quando todos têm espaço para
+            se expressar e são tratados com respeito.
+        </p>
+
+    </div>
+
+    <div class="values-list">
+
+        <div class="value-item">
+            <span>01</span>
+            <div>
+                <strong>Escuta</strong>
+                <p>Dar espaço para cada voz.</p>
+            </div>
+        </div>
+
+        <div class="value-item">
+            <span>02</span>
+            <div>
+                <strong>Respeito</strong>
+                <p>Tratar cada situação com responsabilidade.</p>
+            </div>
+        </div>
+
+        <div class="value-item">
+            <span>03</span>
+            <div>
+                <strong>Acolhimento</strong>
+                <p>Buscar caminhos de apoio e orientação.</p>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- MENSAGEM FINAL -->
 
 <section class="final-message">
-    <h2>Um ambiente melhor começa com a escuta. 💜</h2>
-    <p>Você merece estudar em um ambiente seguro, respeitoso e acolhedor.</p>
+
+    <div class="final-message-icon">💜</div>
+
+    <h2>
+        Você merece um ambiente seguro e acolhedor.
+    </h2>
+
+    <p>
+        Não tenha receio de buscar apoio.
+        Sua voz faz a diferença.
+    </p>
+
+    <a href="{{ url_for('relatar') }}" class="btn btn-light">
+        Começar agora →
+    </a>
+
 </section>
+
 {% endblock %}
