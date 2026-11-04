@@ -275,19 +275,19 @@ def solicitar_atendimento():
 # ACOMPANHAMENTO DE RELATOS
 # =========================================
 
+
 @app.route("/acompanhar", methods=["GET", "POST"])
 def acompanhar():
 
     relato = None
+    erro = None
 
     if request.method == "POST":
 
-        codigo = request.form.get(
-            "codigo", ""
-        ).strip().upper()
+        codigo = request.form.get("codigo", "").strip().upper()
 
         if not codigo:
-            flash("Informe o código de acompanhamento.", "erro")
+            erro = "Informe o código de acompanhamento."
 
         else:
             banco = conectar_banco()
@@ -305,11 +305,12 @@ def acompanhar():
             ).fetchone()
 
             if relato is None:
-                flash("Código não encontrado. Confira e tente novamente.", "erro")
+                erro = "Código não encontrado. Confira e tente novamente."
 
     return render_template(
         "acompanhar.html",
-        relato=relato
+        relato=relato,
+        erro=erro
     )
 
 
