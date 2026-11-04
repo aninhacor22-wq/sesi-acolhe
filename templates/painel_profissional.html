@@ -1,0 +1,381 @@
+
+{% extends "base.html" %}
+
+{% block title %}Painel profissional | SESI Acolhe{% endblock %}
+
+{% block content %}
+
+<section class="dashboard">
+
+    <!-- CABEÇALHO DO PAINEL -->
+
+    <div class="dashboard-heading">
+
+        <div>
+            <span class="section-label">ÁREA PROFISSIONAL</span>
+
+            <h1>
+                Olá, {{ session.get('nome', 'Profissional') }}! 💜
+            </h1>
+
+            <p>
+                Acompanhe os registros e gerencie as solicitações
+                recebidas pelo SESI Acolhe.
+            </p>
+        </div>
+
+        <div class="dashboard-date">
+            <span>✦</span>
+            <div>
+                <strong>Painel de gestão</strong>
+                <small>Ambiente restrito</small>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- INDICADORES -->
+
+    <div class="dashboard-stats">
+
+        <article class="stat-card stat-purple">
+            <div class="stat-icon">📝</div>
+            <span>Total de relatos</span>
+            <strong>{{ total_relatos }}</strong>
+            <small>Registros recebidos</small>
+        </article>
+
+        <article class="stat-card stat-pink">
+            <div class="stat-icon">📨</div>
+            <span>Novos relatos</span>
+            <strong>{{ pendentes }}</strong>
+            <small>Aguardando análise</small>
+        </article>
+
+        <article class="stat-card stat-blue">
+            <div class="stat-icon">🤝</div>
+            <span>Em acompanhamento</span>
+            <strong>{{ em_acompanhamento }}</strong>
+            <small>Em andamento</small>
+        </article>
+
+        <article class="stat-card stat-lilac">
+            <div class="stat-icon">💬</div>
+            <span>Solicitações</span>
+            <strong>{{ total_solicitacoes }}</strong>
+            <small>Pedidos de atendimento</small>
+        </article>
+
+    </div>
+
+
+    <!-- RELATOS -->
+
+    <section class="dashboard-section">
+
+        <div class="dashboard-section-heading">
+
+            <div>
+                <span class="section-label">GERENCIAMENTO</span>
+                <h2>Relatos recebidos</h2>
+                <p>Consulte os registros e acompanhe seu andamento.</p>
+            </div>
+
+            <span class="dashboard-count">
+                {{ relatos|length }} registros
+            </span>
+
+        </div>
+
+
+        <div class="dashboard-filters">
+
+            <input
+                type="search"
+                id="filtro-relatos"
+                placeholder="Pesquisar por código ou título..."
+                aria-label="Pesquisar relatos"
+            >
+
+            <select id="filtro-status" aria-label="Filtrar por status">
+                <option value="">Todos os status</option>
+                <option value="Recebido">Recebido</option>
+                <option value="Em análise">Em análise</option>
+                <option value="Encaminhado">Encaminhado</option>
+                <option value="Em acompanhamento">Em acompanhamento</option>
+                <option value="Finalizado">Finalizado</option>
+            </select>
+
+        </div>
+
+
+        <div class="table-container">
+
+            <table class="dashboard-table" id="tabela-relatos">
+
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Relato</th>
+                        <th>Categoria</th>
+                        <th>Identificação</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for relato in relatos %}
+
+                    <tr class="relato-row"
+                        data-status="{{ relato['status'] }}"
+                        data-pesquisa="{{ relato['codigo_acompanhamento'] }} {{ relato['titulo'] }} {{ relato['categoria'] }}">
+
+                        <td>
+                            <strong class="table-code">
+                                {{ relato['codigo_acompanhamento'] }}
+                            </strong>
+                        </td>
+
+                        <td>
+                            <strong>{{ relato['titulo'] }}</strong>
+                            <small class="table-date">
+                                {{ relato['data_criacao'] }}
+                            </small>
+                        </td>
+
+                        <td>{{ relato['categoria'] }}</td>
+
+                        <td>
+                            {% if relato['anonimo'] == 1 %}
+                                <span class="identity-tag anonymous">
+                                    Anônimo
+                                </span>
+                            {% else %}
+                                <span class="identity-tag identified">
+                                    Identificado
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <span class="status-tag">
+                                {{ relato['status'] }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <a href="{{ url_for('visualizar_relato', id_relato=relato['id_relato']) }}"
+                               class="table-action">
+                                Visualizar →
+                            </a>
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="6" class="empty-table">
+                            <span>💜</span>
+                            <strong>Nenhum relato recebido ainda.</strong>
+                            <small>
+                                Quando houver novos registros, eles aparecerão aqui.
+                            </small>
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <p id="sem-resultados" class="empty-search" hidden>
+            Nenhum relato corresponde à sua pesquisa.
+        </p>
+
+    </section>
+
+
+    <!-- SOLICITAÇÕES DE ATENDIMENTO -->
+
+    <section class="dashboard-section">
+
+        <div class="dashboard-section-heading">
+
+            <div>
+                <span class="section-label">ACOLHIMENTO</span>
+                <h2>Solicitações de atendimento</h2>
+                <p>Pedidos enviados pelos estudantes.</p>
+            </div>
+
+            <span class="dashboard-count">
+                {{ solicitacoes|length }} solicitações
+            </span>
+
+        </div>
+
+
+        <div class="table-container">
+
+            <table class="dashboard-table">
+
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Nome</th>
+                        <th>Contato</th>
+                        <th>Solicitação</th>
+                        <th>Status</th>
+                        <th>Atualizar</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for solicitacao in solicitacoes %}
+
+                    <tr>
+
+                        <td>
+                            {{ solicitacao['data_solicitacao'] }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao['nome'] or 'Não informado' }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao['email'] or 'Não informado' }}
+                        </td>
+
+                        <td class="request-description">
+                            {{ solicitacao['descricao'] }}
+                        </td>
+
+                        <td>
+                            <span class="status-tag">
+                                {{ solicitacao['status'] }}
+                            </span>
+                        </td>
+
+                        <td>
+
+                            <form method="POST"
+                                  action="{{ url_for('atualizar_solicitacao', id_solicitacao=solicitacao['id_solicitacao']) }}"
+                                  class="status-form">
+
+                                <select name="status" aria-label="Status da solicitação">
+
+                                    {% for status in ['Pendente', 'Agendada', 'Atendida', 'Cancelada'] %}
+
+                                        <option
+                                            value="{{ status }}"
+                                            {% if solicitacao['status'] == status %}
+                                                selected
+                                            {% endif %}
+                                        >
+                                            {{ status }}
+                                        </option>
+
+                                    {% endfor %}
+
+                                </select>
+
+                                <button type="submit" class="small-action">
+                                    Salvar
+                                </button>
+
+                            </form>
+
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="6" class="empty-table">
+                            <span>🤝</span>
+                            <strong>Nenhuma solicitação recebida.</strong>
+                            <small>
+                                As novas solicitações aparecerão aqui.
+                            </small>
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- RODAPÉ DO PAINEL -->
+
+    <div class="dashboard-note">
+        <span>🔒</span>
+        <p>
+            Informações restritas à equipe autorizada.
+            Trate todos os registros com responsabilidade e cuidado.
+        </p>
+    </div>
+
+</section>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+    const pesquisa = document.getElementById("filtro-relatos");
+    const filtroStatus = document.getElementById("filtro-status");
+    const linhas = document.querySelectorAll(".relato-row");
+    const semResultados = document.getElementById("sem-resultados");
+
+    function filtrarRelatos() {
+
+        const termo = pesquisa.value.toLowerCase().trim();
+        const status = filtroStatus.value;
+
+        let encontrados = 0;
+
+        linhas.forEach(function(linha) {
+
+            const texto = linha.dataset.pesquisa.toLowerCase();
+            const statusLinha = linha.dataset.status;
+
+            const correspondeTexto = texto.includes(termo);
+            const correspondeStatus = !status || statusLinha === status;
+
+            const mostrar = correspondeTexto && correspondeStatus;
+
+            linha.hidden = !mostrar;
+
+            if (mostrar) {
+                encontrados++;
+            }
+
+        });
+
+        semResultados.hidden = encontrados !== 0;
+
+    }
+
+    pesquisa.addEventListener("input", filtrarRelatos);
+    filtroStatus.addEventListener("change", filtrarRelatos);
+
+</script>
+
+{% endblock %}
