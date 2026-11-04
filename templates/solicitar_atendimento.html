@@ -1,4 +1,4 @@
-```html
+
 {% extends "base.html" %}
 
 {% block title %}Solicitar atendimento | SESI Acolhe{% endblock %}
@@ -6,75 +6,156 @@
 {% block content %}
 
 <section class="form-page">
+
     <a href="{{ url_for('inicio') }}" class="back-link">
         ← Voltar ao início
     </a>
 
     <div class="form-heading">
-        <span class="tag">💜 Você merece ser ouvido</span>
+
+        <span class="tag">💜 VOCÊ PODE CONTAR CONOSCO</span>
+
         <h1>Solicitar atendimento</h1>
+
         <p>
-            Este espaço foi pensado para estudantes que desejam conversar
-            com a equipe de acolhimento da escola.
+            Se você deseja conversar com a equipe de acolhimento,
+            preencha o formulário abaixo. Sua solicitação será
+            encaminhada para análise.
         </p>
+
     </div>
 
+
     {% if sucesso %}
+
         <div class="success-box">
+
             <div class="success-icon">✓</div>
-            <h2>Solicitação registrada!</h2>
+
+            <h2>Solicitação enviada!</h2>
+
             <p>
-                Sua solicitação foi registrada no sistema.
-                Este protótipo ainda não possui um painel de acompanhamento
-                pela equipe escolar.
+                Sua solicitação foi recebida pelo SESI Acolhe.
+                A equipe responsável poderá analisar seu pedido
+                e dar encaminhamento.
             </p>
 
-            <a href="{{ url_for('inicio') }}" class="btn btn-primary">
-                Voltar ao início
-            </a>
-        </div>
-
-    {% else %}
-
-        <form method="POST" class="report-form">
             <div class="privacy-notice">
                 <span>🔒</span>
+
                 <div>
-                    <strong>Um espaço de acolhimento</strong>
+                    <strong>Privacidade e cuidado</strong>
+
                     <p>
-                        Compartilhe apenas as informações necessárias.
-                        Este protótipo ainda está em desenvolvimento.
+                        As informações serão destinadas à equipe
+                        autorizada responsável pelo acolhimento.
                     </p>
                 </div>
             </div>
 
+            <a href="{{ url_for('inicio') }}" class="btn btn-primary">
+                Voltar ao início →
+            </a>
+
+        </div>
+
+
+    {% else %}
+
+        <form method="POST" class="report-form">
+
+            <div class="privacy-notice">
+
+                <span>🤝</span>
+
+                <div>
+                    <strong>Um espaço de acolhimento</strong>
+
+                    <p>
+                        Você pode solicitar uma conversa mesmo
+                        sem ter registrado um relato anteriormente.
+                    </p>
+                </div>
+
+            </div>
+
+
             <div class="form-group">
+
+                <label for="nome">
+                    Nome (opcional)
+                </label>
+
+                <input
+                    type="text"
+                    id="nome"
+                    name="nome"
+                    maxlength="150"
+                    placeholder="Como podemos chamar você?"
+                    value="{{ request.form.get('nome', '') }}"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="email">
+                    E-mail para contato (opcional)
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    maxlength="150"
+                    placeholder="seuemail@exemplo.com"
+                    value="{{ request.form.get('email', '') }}"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
                 <label for="descricao">
-                    Conte como podemos ajudar *
+                    Como podemos ajudar? *
                 </label>
 
                 <textarea
                     id="descricao"
                     name="descricao"
-                    rows="6"
+                    rows="7"
                     maxlength="3000"
-                    placeholder="Descreva brevemente o motivo da solicitação..."
+                    placeholder="Conte brevemente o motivo da sua solicitação..."
                     required
                 >{{ request.form.get('descricao', '') }}</textarea>
+
+                <small>
+                    Compartilhe apenas as informações necessárias
+                    para que a equipe compreenda seu pedido.
+                </small>
+
             </div>
 
+
             <p class="form-disclaimer">
-                * Campo obrigatório. O envio não garante agendamento
-                automático de atendimento.
+                * Campo obrigatório. O envio desta solicitação
+                não representa um agendamento automático.
             </p>
 
-            <button type="submit" class="btn btn-primary submit-button">
-                Enviar solicitação
+
+            <button type="submit"
+                    class="btn btn-primary submit-button">
+
+                Enviar solicitação →
+
             </button>
+
         </form>
 
     {% endif %}
+
 </section>
 
 {% endblock %}
-```
