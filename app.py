@@ -312,8 +312,6 @@ def acompanhar():
         relato=relato,
         erro=erro
     )
-
-# =========================================
 # LOGIN PROFISSIONAL
 # =========================================
 
