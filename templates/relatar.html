@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Registrar relato | SESI Acolhe{% endblock %}
@@ -5,77 +6,113 @@
 {% block content %}
 
 <section class="form-page">
+
     <a href="{{ url_for('inicio') }}" class="back-link">
         ← Voltar ao início
     </a>
 
     <div class="form-heading">
-        <span class="tag">💜 Estamos aqui para ouvir</span>
+
+        <span class="tag">💜 ESTAMOS AQUI PARA OUVIR</span>
+
         <h1>Registrar um relato</h1>
+
         <p>
-            Compartilhe a situação que você deseja comunicar.
-            Preencha os campos com as informações necessárias.
+            Este é um espaço para compartilhar situações que
+            merecem atenção. Conte conosco para encaminhar
+            sua manifestação com responsabilidade.
         </p>
+
     </div>
 
-    {% if codigo_confirmacao %}
+
+    {% if sucesso %}
+
         <div class="success-box">
+
             <div class="success-icon">✓</div>
 
             <h2>Relato registrado!</h2>
 
             <p>
-                Seu relato anônimo foi salvo no sistema.
-                Guarde o código abaixo para identificar o registro.
+                Sua manifestação foi recebida pelo SESI Acolhe.
+                Guarde seu código para consultar o andamento.
             </p>
 
             <div class="tracking-code">
-                {{ codigo_confirmacao }}
+                {{ codigo }}
             </div>
 
             <p class="small-note">
-                Anote esse código em um lugar seguro.
-                O acompanhamento do relato ainda será implementado.
+                Guarde esse código em um local seguro.
+                Ele será necessário para consultar o status do relato.
             </p>
 
-            <a href="{{ url_for('inicio') }}" class="btn btn-primary">
+            <a href="{{ url_for('acompanhar') }}"
+               class="btn btn-primary">
+                Acompanhar relato →
+            </a>
+
+            <a href="{{ url_for('inicio') }}"
+               class="back-link success-back">
                 Voltar ao início
             </a>
+
         </div>
+
 
     {% else %}
 
         <form method="POST" class="report-form">
+
             <div class="privacy-notice">
+
                 <span>🔒</span>
+
                 <div>
-                    <strong>Privacidade importa</strong>
+                    <strong>Sua privacidade é importante</strong>
+
                     <p>
-                        Neste protótipo, os relatos são anônimos.
-                        Envie apenas informações necessárias para compreender
-                        a situação.
+                        Escolha se deseja se identificar.
+                        As informações enviadas serão destinadas
+                        à equipe autorizada responsável pelo acolhimento.
                     </p>
                 </div>
+
             </div>
 
+
+            <!-- TÍTULO -->
+
             <div class="form-group">
-                <label for="titulo">Título do relato *</label>
+
+                <label for="titulo">
+                    Título do relato *
+                </label>
 
                 <input
                     type="text"
                     id="titulo"
                     name="titulo"
                     maxlength="150"
-                    placeholder="Resuma a situação"
+                    placeholder="Ex.: Situação de desrespeito"
                     value="{{ request.form.get('titulo', '') }}"
                     required
                 >
+
             </div>
 
+
+            <!-- CATEGORIA -->
+
             <div class="form-group">
-                <label for="categoria">Categoria *</label>
+
+                <label for="categoria">
+                    Categoria *
+                </label>
 
                 <select id="categoria" name="categoria" required>
+
                     <option value="">Selecione uma categoria</option>
 
                     {% for opcao in [
@@ -86,6 +123,7 @@
                         'Insegurança ou desconforto',
                         'Outro'
                     ] %}
+
                         <option
                             value="{{ opcao }}"
                             {% if request.form.get('categoria') == opcao %}
@@ -94,31 +132,46 @@
                         >
                             {{ opcao }}
                         </option>
+
                     {% endfor %}
+
                 </select>
+
             </div>
 
+
+            <!-- DESCRIÇÃO -->
+
             <div class="form-group">
-                <label for="descricao">Descrição da situação *</label>
+
+                <label for="descricao">
+                    Descrição da situação *
+                </label>
 
                 <textarea
                     id="descricao"
                     name="descricao"
-                    rows="6"
+                    rows="7"
                     maxlength="5000"
-                    placeholder="Conte o que aconteceu, usando apenas os detalhes necessários..."
+                    placeholder="Conte o que aconteceu e compartilhe os detalhes necessários..."
                     required
                 >{{ request.form.get('descricao', '') }}</textarea>
 
                 <small>
-                    Não inclua senhas ou dados pessoais desnecessários.
+                    Evite incluir senhas ou informações pessoais desnecessárias.
                 </small>
+
             </div>
 
+
+            <!-- IDENTIFICAÇÃO -->
+
             <fieldset class="form-group anonymity-options">
-                <legend>Como deseja registrar o relato?</legend>
+
+                <legend>Como deseja registrar seu relato? *</legend>
 
                 <label class="radio-option">
+
                     <input
                         type="radio"
                         name="anonimo"
@@ -130,13 +183,17 @@
 
                     <span>
                         <strong>Relato anônimo</strong>
+
                         <small>
-                            Seu relato não será associado a um usuário cadastrado.
+                            Seu nome não será informado no registro.
                         </small>
                     </span>
+
                 </label>
 
-                <label class="radio-option unavailable-option">
+
+                <label class="radio-option">
+
                     <input
                         type="radio"
                         name="anonimo"
@@ -148,25 +205,138 @@
 
                     <span>
                         <strong>Relato identificado</strong>
+
                         <small>
-                            Indisponível nesta versão inicial.
-                            Será habilitado após a criação do cadastro seguro.
+                            Você poderá informar seus dados para
+                            facilitar o contato da equipe.
                         </small>
                     </span>
+
                 </label>
+
             </fieldset>
 
+
+            <!-- CAMPOS DE IDENTIFICAÇÃO -->
+
+            <div id="identificacao-campos"
+                 class="identification-fields"
+                 {% if request.form.get('anonimo', 'sim') == 'sim' %}
+                    hidden
+                 {% endif %}>
+
+                <div class="form-group">
+
+                    <label for="nome">
+                        Seu nome *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        maxlength="150"
+                        placeholder="Digite seu nome"
+                        value="{{ request.form.get('nome', '') }}"
+                    >
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="email">
+                        E-mail para contato (opcional)
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        maxlength="150"
+                        placeholder="seuemail@exemplo.com"
+                        value="{{ request.form.get('email', '') }}"
+                    >
+
+                </div>
+
+                <div class="privacy-notice">
+                    <span>ℹ️</span>
+
+                    <div>
+                        <strong>Sobre seus dados</strong>
+
+                        <p>
+                            Ao escolher a identificação, seu nome
+                            ficará associado ao relato e será visível
+                            à equipe profissional autorizada.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+
             <p class="form-disclaimer">
-                * Campos obrigatórios. O sistema está em desenvolvimento
-                e ainda não substitui os canais oficiais de acolhimento da escola.
+                * Campos obrigatórios. O SESI Acolhe é um projeto
+                educacional e não substitui os canais oficiais
+                de acolhimento da escola.
             </p>
 
-            <button type="submit" class="btn btn-primary submit-button">
-                Enviar relato
+
+            <button type="submit"
+                    class="btn btn-primary submit-button">
+
+                Enviar relato →
+
             </button>
+
         </form>
 
     {% endif %}
+
 </section>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+    const opcoesAnonimato = document.querySelectorAll(
+        'input[name="anonimo"]'
+    );
+
+    const camposIdentificacao = document.getElementById(
+        "identificacao-campos"
+    );
+
+    const campoNome = document.getElementById("nome");
+
+    function atualizarIdentificacao() {
+
+        const selecionado = document.querySelector(
+            'input[name="anonimo"]:checked'
+        );
+
+        if (!selecionado) return;
+
+        const identificado = selecionado.value === "nao";
+
+        camposIdentificacao.hidden = !identificado;
+
+        campoNome.required = identificado;
+
+    }
+
+    opcoesAnonimato.forEach(function(opcao) {
+
+        opcao.addEventListener("change", atualizarIdentificacao);
+
+    });
+
+    atualizarIdentificacao();
+
+</script>
 
 {% endblock %}
