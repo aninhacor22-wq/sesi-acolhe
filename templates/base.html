@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -7,75 +8,197 @@
 
     <title>{% block title %}SESI Acolhe{% endblock %}</title>
 
-    <meta name="description" content="SESI Acolhe: um espaço de escuta, acolhimento e encaminhamento para estudantes.">
+    <meta name="description"
+          content="SESI Acolhe: um espaço de escuta, acolhimento e encaminhamento para estudantes.">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="theme-color" content="#6d4acb">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body>
 
+    <!-- CABEÇALHO -->
+
     <header class="site-header">
+
         <nav class="navbar">
 
             <a href="{{ url_for('inicio') }}" class="logo">
                 <span class="logo-icon">💜</span>
-                <span>SESI <strong>Acolhe</strong></span>
+
+                <span class="logo-text">
+                    SESI <strong>Acolhe</strong>
+                </span>
             </a>
 
             <button class="menu-toggle"
                     type="button"
                     aria-label="Abrir menu"
-                    onclick="document.querySelector('.nav-links').classList.toggle('active')">
-                ☰
+                    aria-expanded="false"
+                    onclick="alternarMenu(this)">
+
+                <span></span>
+                <span></span>
+                <span></span>
+
             </button>
 
-            <div class="nav-links">
+            <div class="nav-links" id="menu-principal">
+
                 <a href="{{ url_for('inicio') }}">Início</a>
+
                 <a href="{{ url_for('relatar') }}">Relatar situação</a>
-                <a href="{{ url_for('solicitar_atendimento') }}">Solicitar atendimento</a>
-                <a href="{{ url_for('login') }}" class="nav-login">Área profissional</a>
+
+                <a href="{{ url_for('solicitar_atendimento') }}">
+                    Solicitar atendimento
+                </a>
+
+                <a href="{{ url_for('acompanhar') }}">
+                    Acompanhar relato
+                </a>
+
+                {% if session.get('id_usuario') %}
+
+                    <a href="{{ url_for('painel_profissional') }}"
+                       class="nav-login">
+                        Meu painel
+                    </a>
+
+                    <form action="{{ url_for('logout') }}"
+                          method="POST"
+                          class="logout-form">
+
+                        <button type="submit" class="nav-logout">
+                            Sair
+                        </button>
+
+                    </form>
+
+                {% else %}
+
+                    <a href="{{ url_for('login') }}"
+                       class="nav-login">
+                        Área profissional
+                    </a>
+
+                {% endif %}
+
             </div>
 
         </nav>
+
     </header>
+
+
+    <!-- CONTEÚDO PRINCIPAL -->
 
     <main class="main-content">
 
         {% with mensagens = get_flashed_messages(with_categories=true) %}
+
             {% if mensagens %}
+
                 <div class="flash-container">
+
                     {% for categoria, mensagem in mensagens %}
-                        <div class="flash-message {{ categoria }}">
+
+                        <div class="flash-message {{ categoria }}"
+                             role="alert">
+
                             {{ mensagem }}
+
                         </div>
+
                     {% endfor %}
+
                 </div>
+
             {% endif %}
+
         {% endwith %}
+
 
         {% block content %}
         {% endblock %}
 
     </main>
 
+
+    <!-- RODAPÉ -->
+
     <footer class="site-footer">
+
         <div class="footer-content">
-            <a href="{{ url_for('inicio') }}" class="footer-logo">
-                💜 SESI Acolhe
-            </a>
 
-            <p>Ouvir • Acolher • Encaminhar</p>
+            <div class="footer-brand">
 
-            <p class="footer-note">
-                Um espaço dedicado ao acolhimento e ao bem-estar no ambiente escolar.
-            </p>
+                <a href="{{ url_for('inicio') }}" class="footer-logo">
+                    💜 SESI Acolhe
+                </a>
 
-            <span class="copyright">
-                Projeto educacional desenvolvido por estudantes.
-            </span>
+                <p class="footer-slogan">
+                    Ouvir • Acolher • Encaminhar
+                </p>
+
+            </div>
+
+            <div class="footer-description">
+
+                <p>
+                    Um espaço dedicado ao acolhimento,
+                    à escuta e ao bem-estar no ambiente escolar.
+                </p>
+
+            </div>
+
+            <div class="footer-bottom">
+
+                <span class="copyright">
+                    Projeto educacional desenvolvido por estudantes.
+                </span>
+
+                <span class="footer-heart">
+                    Feito com 💜
+                </span>
+
+            </div>
+
         </div>
+
     </footer>
+
+
+    <!-- MENU RESPONSIVO -->
+
+    <script>
+        function alternarMenu(botao) {
+
+            const menu = document.getElementById("menu-principal");
+
+            menu.classList.toggle("active");
+
+            const aberto = menu.classList.contains("active");
+
+            botao.setAttribute("aria-expanded", aberto);
+
+            botao.setAttribute(
+                "aria-label",
+                aberto ? "Fechar menu" : "Abrir menu"
+            );
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
 
 </body>
 </html>
-```
