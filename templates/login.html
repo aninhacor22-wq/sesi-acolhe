@@ -1,83 +1,146 @@
-```html
+
 {% extends "base.html" %}
 
 {% block title %}Área profissional | SESI Acolhe{% endblock %}
 
 {% block content %}
 
-<section class="form-page login-page">
+<section class="login-page">
 
     <a href="{{ url_for('inicio') }}" class="back-link">
         ← Voltar ao início
     </a>
 
-    <div class="login-card">
+    <div class="login-layout">
 
-        <div class="login-icon">🔐</div>
+        <!-- APRESENTAÇÃO -->
 
-        <span class="tag">Área restrita</span>
+        <div class="login-intro">
 
-        <h1>Acesso profissional</h1>
+            <span class="tag">ÁREA RESTRITA</span>
 
-        <p>
-            Entre com suas credenciais para acessar a área profissional.
-        </p>
-
-        <div class="privacy-notice">
-            <span>🛡️</span>
-            <div>
-                <strong>Acesso autorizado</strong>
-                <p>
-                    Esta área é destinada aos profissionais e administradores
-                    autorizados do SESI Acolhe.
-                </p>
+            <div class="login-intro-icon">
+                💜
             </div>
+
+            <h1>
+                Cuidar também é
+                <span>estar presente.</span>
+            </h1>
+
+            <p>
+                Espaço exclusivo para os profissionais
+                responsáveis pelo acolhimento e acompanhamento
+                das manifestações recebidas.
+            </p>
+
+            <div class="login-benefits">
+
+                <div>
+                    <span>✓</span>
+                    Acesso aos relatos recebidos
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Acompanhamento das solicitações
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Gerenciamento dos encaminhamentos
+                </div>
+
+            </div>
+
         </div>
 
-        <form method="POST" class="report-form">
 
-            <div class="form-group">
-                <label for="email">E-mail profissional</label>
+        <!-- FORMULÁRIO -->
 
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value="{{ request.form.get('email', '') }}"
-                    autocomplete="username"
-                    maxlength="254"
-                    required
-                >
+        <div class="login-card">
+
+            <div class="login-card-heading">
+
+                <div class="login-icon">🔐</div>
+
+                <span class="section-label">
+                    ACESSO PROFISSIONAL
+                </span>
+
+                <h2>Bem-vindo!</h2>
+
+                <p>
+                    Entre com suas credenciais para continuar.
+                </p>
+
             </div>
 
-            <div class="form-group">
-                <label for="senha">Senha</label>
 
-                <input
-                    type="password"
-                    id="senha"
-                    name="senha"
-                    autocomplete="current-password"
-                    required
-                >
+            <form method="POST" class="report-form login-form">
+
+                <div class="form-group">
+
+                    <label for="email">
+                        E-mail profissional
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="seuemail@escola.com"
+                        value="{{ request.form.get('email', '') }}"
+                        autocomplete="username"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="senha">
+                        Senha
+                    </label>
+
+                    <input
+                        type="password"
+                        id="senha"
+                        name="senha"
+                        placeholder="Digite sua senha"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                </div>
+
+
+                <button type="submit"
+                        class="btn btn-primary submit-button">
+
+                    Entrar no painel →
+
+                </button>
+
+            </form>
+
+
+            <div class="login-security">
+
+                <span>🔒</span>
+
+                <p>
+                    Ambiente restrito. O acesso é destinado
+                    exclusivamente aos profissionais autorizados.
+                </p>
+
             </div>
 
-            <button
-                type="submit"
-                class="btn btn-primary submit-button"
-            >
-                Entrar
-            </button>
-
-        </form>
-
-        <a href="{{ url_for('inicio') }}" class="login-home-link">
-            Voltar para a página inicial
-        </a>
+        </div>
 
     </div>
 
 </section>
 
 {% endblock %}
-```
