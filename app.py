@@ -1,9 +1,10 @@
 
 import os
 import secrets
-import sqlite3
-from pathlib import Path
 from functools import wraps
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from flask import (
     Flask,
@@ -15,6 +16,7 @@ from flask import (
     session,
     g
 )
+
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -22,105 +24,88 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # CONFIGURAÇÕES
 # =========================================
 
-BASE_DIR = Path(__file__).resolve().parent
-
-DATABASE = os.environ.get(
-    "DATABASE_PATH",
-    str(BASE_DIR / "sesi_acolhe.db")
-)
-
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 if not app.config["SECRET_KEY"]:
-    app.config["SECRET_KEY"] = secrets.token_hex(32)
-    print("AVISO: configure SECRET_KEY nas variáveis de ambiente.")
+    raise RuntimeError("Configure SECRET_KEY nas variáveis do Render.")
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("Configure DATABASE_URL nas variáveis do Render.")
 
 
 # =========================================
-# BANCO DE DADOS
+# CONEXÃO POSTGRESQL - SUPABASE
 # =========================================
 
 def conectar_banco():
+
     if "banco" not in g:
-        g.banco = sqlite3.connect(DATABASE)
-        g.banco.row_factory = sqlite3.Row
-        g.banco.execute("PRAGMA foreign_keys = ON")
+        g.banco = psycopg2.connect(
+            DATABASE_URL,
+            sslmode="require",
+            cursor_factory=RealDictCursor
+        )
 
     return g.banco
 
 
 @app.teardown_appcontext
 def fechar_banco(exception=None):
+
     banco = g.pop("banco", None)
 
     if banco is not None:
         banco.close()
 
 
-def inicializar_banco():
-    banco = sqlite3.connect(DATABASE)
+# =========================================
+# CADASTRO DO PRIMEIRO PROFISSIONAL
+# =========================================
+
+def criar_profissional_inicial():
+
+    nome = os.environ.get("PROFISSIONAL_NOME")
+    email = os.environ.get("PROFISSIONAL_EMAIL")
+    senha = os.environ.get("PROFISSIONAL_SENHA")
+
+    if not all([nome, email, senha]):
+        return
+
+    banco = conectar_banco()
 
     try:
-        banco.execute("PRAGMA foreign_keys = ON")
-
-        caminho_script = BASE_DIR / "script.sql"
-
-        with open(caminho_script, "r", encoding="utf-8") as arquivo:
-            script = arquivo.read()
-
-        banco.executescript(script)
-
-        # Cria o primeiro profissional usando variáveis de ambiente.
-        nome = os.environ.get("PROFISSIONAL_NOME")
-        email = os.environ.get("PROFISSIONAL_EMAIL")
-        senha = os.environ.get("PROFISSIONAL_SENHA")
-
-        if nome and email and senha:
-            usuario = banco.execute(
-                "SELECT id_usuario, senha_hash FROM usuarios WHERE email = ?",
-                (email.lower().strip(),)
-            ).fetchone()
-
-            if usuario is None:
-                banco.execute(
-                    """
-                    INSERT INTO usuarios (nome, email, senha_hash, tipo)
-                    VALUES (?, ?, ?, 'profissional')
-                    """,
-                    (
-                        nome.strip(),
-                        email.lower().strip(),
-                        generate_password_hash(senha)
-                    )
+        with banco.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO usuarios
+                    (nome, email, senha_hash, tipo, ativo)
+                VALUES (%s, %s, %s, 'profissional', TRUE)
+                ON CONFLICT (email) DO NOTHING
+                """,
+                (
+                    nome.strip(),
+                    email.strip().lower(),
+                    generate_password_hash(senha)
                 )
-
-            elif usuario[1].startswith("HASH_DEMONSTRATIVO"):
-                banco.execute(
-                    """
-                    UPDATE usuarios
-                    SET nome = ?, senha_hash = ?, tipo = 'profissional'
-                    WHERE id_usuario = ?
-                    """,
-                    (
-                        nome.strip(),
-                        generate_password_hash(senha),
-                        usuario[0]
-                    )
-                )
+            )
 
         banco.commit()
 
-    finally:
-        banco.close()
+    except Exception:
+        banco.rollback()
+        raise
 
 
 # =========================================
-# AUTENTICAÇÃO
+# PROTEÇÃO DAS PÁGINAS PROFISSIONAIS
 # =========================================
 
 def profissional_obrigatorio(funcao):
+
     @wraps(funcao)
     def verificar_acesso(*args, **kwargs):
 
@@ -128,7 +113,10 @@ def profissional_obrigatorio(funcao):
             flash("Faça login para acessar essa área.", "aviso")
             return redirect(url_for("login"))
 
-        if session.get("tipo") not in ("profissional", "administrador"):
+        if session.get("tipo") not in (
+            "profissional",
+            "administrador"
+        ):
             session.clear()
             flash("Você não tem permissão para acessar essa página.", "erro")
             return redirect(url_for("login"))
@@ -181,7 +169,7 @@ def relatar():
             flash("Selecione uma categoria válida.", "erro")
             return render_template("relatar.html")
 
-        anonimo = 1 if tipo_relato == "sim" else 0
+        anonimo = tipo_relato == "sim"
 
         if not anonimo and not nome:
             flash("Informe seu nome para enviar um relato identificado.", "erro")
@@ -191,31 +179,38 @@ def relatar():
 
         banco = conectar_banco()
 
-        banco.execute(
-            """
-            INSERT INTO relatos (
-                codigo_acompanhamento,
-                titulo,
-                descricao,
-                categoria,
-                anonimo,
-                nome_identificado,
-                email_identificado
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                codigo,
-                titulo,
-                descricao,
-                categoria,
-                anonimo,
-                None if anonimo else nome,
-                None if anonimo else (email or None)
-            )
-        )
+        try:
+            with banco.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO relatos (
+                        codigo_acompanhamento,
+                        titulo,
+                        descricao,
+                        categoria,
+                        anonimo,
+                        nome_identificado,
+                        email_identificado,
+                        status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'Recebido')
+                    """,
+                    (
+                        codigo,
+                        titulo,
+                        descricao,
+                        categoria,
+                        anonimo,
+                        None if anonimo else nome,
+                        None if anonimo else (email or None)
+                    )
+                )
 
-        banco.commit()
+            banco.commit()
+
+        except Exception:
+            banco.rollback()
+            raise
 
         return render_template(
             "relatar.html",
@@ -249,19 +244,25 @@ def solicitar_atendimento():
 
         banco = conectar_banco()
 
-        banco.execute(
-            """
-            INSERT INTO solicitacoes_atendimento (
-                nome,
-                email,
-                descricao
-            )
-            VALUES (?, ?, ?)
-            """,
-            (nome or None, email or None, descricao)
-        )
+        try:
+            with banco.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO solicitacoes_atendimento (
+                        nome,
+                        email,
+                        descricao
+                    )
+                    VALUES (%s, %s, %s)
+                    """,
+                    (nome or None, email or None, descricao)
+                )
 
-        banco.commit()
+            banco.commit()
+
+        except Exception:
+            banco.rollback()
+            raise
 
         return render_template(
             "solicitar_atendimento.html",
@@ -274,7 +275,6 @@ def solicitar_atendimento():
 # =========================================
 # ACOMPANHAMENTO DE RELATOS
 # =========================================
-
 
 @app.route("/acompanhar", methods=["GET", "POST"])
 def acompanhar():
@@ -292,17 +292,20 @@ def acompanhar():
         else:
             banco = conectar_banco()
 
-            relato = banco.execute(
-                """
-                SELECT
-                    codigo_acompanhamento,
-                    status,
-                    data_criacao
-                FROM relatos
-                WHERE codigo_acompanhamento = ?
-                """,
-                (codigo,)
-            ).fetchone()
+            with banco.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        codigo_acompanhamento,
+                        status,
+                        data_criacao
+                    FROM relatos
+                    WHERE codigo_acompanhamento = %s
+                    """,
+                    (codigo,)
+                )
+
+                relato = cursor.fetchone()
 
             if relato is None:
                 erro = "Código não encontrado. Confira e tente novamente."
@@ -312,6 +315,9 @@ def acompanhar():
         relato=relato,
         erro=erro
     )
+
+
+# =========================================
 # LOGIN PROFISSIONAL
 # =========================================
 
@@ -328,19 +334,21 @@ def login():
 
         banco = conectar_banco()
 
-        usuario = banco.execute(
-            """
-            SELECT *
-            FROM usuarios
-            WHERE email = ? AND ativo = 1
-            """,
-            (email,)
-        ).fetchone()
+        with banco.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM usuarios
+                WHERE email = %s AND ativo = TRUE
+                """,
+                (email,)
+            )
+
+            usuario = cursor.fetchone()
 
         if (
             usuario
             and usuario["tipo"] in ("profissional", "administrador")
-            and not usuario["senha_hash"].startswith("HASH_DEMONSTRATIVO")
             and check_password_hash(usuario["senha_hash"], senha)
         ):
 
@@ -369,45 +377,54 @@ def painel_profissional():
 
     banco = conectar_banco()
 
-    relatos = banco.execute(
-        """
-        SELECT *
-        FROM relatos
-        ORDER BY data_criacao DESC
-        """
-    ).fetchall()
+    with banco.cursor() as cursor:
 
-    solicitacoes = banco.execute(
-        """
-        SELECT *
-        FROM solicitacoes_atendimento
-        ORDER BY data_solicitacao DESC
-        """
-    ).fetchall()
+        cursor.execute(
+            """
+            SELECT *
+            FROM relatos
+            ORDER BY data_criacao DESC
+            """
+        )
+        relatos = cursor.fetchall()
 
-    total_relatos = banco.execute(
-        "SELECT COUNT(*) FROM relatos"
-    ).fetchone()[0]
+        cursor.execute(
+            """
+            SELECT *
+            FROM solicitacoes_atendimento
+            ORDER BY data_solicitacao DESC
+            """
+        )
+        solicitacoes = cursor.fetchall()
 
-    pendentes = banco.execute(
-        """
-        SELECT COUNT(*)
-        FROM relatos
-        WHERE status = 'Recebido'
-        """
-    ).fetchone()[0]
+        cursor.execute("SELECT COUNT(*) AS total FROM relatos")
+        total_relatos = cursor.fetchone()["total"]
 
-    em_acompanhamento = banco.execute(
-        """
-        SELECT COUNT(*)
-        FROM relatos
-        WHERE status = 'Em acompanhamento'
-        """
-    ).fetchone()[0]
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM relatos
+            WHERE status = 'Recebido'
+            """
+        )
+        pendentes = cursor.fetchone()["total"]
 
-    total_solicitacoes = banco.execute(
-        "SELECT COUNT(*) FROM solicitacoes_atendimento"
-    ).fetchone()[0]
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM relatos
+            WHERE status = 'Em acompanhamento'
+            """
+        )
+        em_acompanhamento = cursor.fetchone()["total"]
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM solicitacoes_atendimento
+            """
+        )
+        total_solicitacoes = cursor.fetchone()["total"]
 
     return render_template(
         "painel_profissional.html",
@@ -430,14 +447,17 @@ def visualizar_relato(id_relato):
 
     banco = conectar_banco()
 
-    relato = banco.execute(
-        """
-        SELECT *
-        FROM relatos
-        WHERE id_relato = ?
-        """,
-        (id_relato,)
-    ).fetchone()
+    with banco.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT *
+            FROM relatos
+            WHERE id_relato = %s
+            """,
+            (id_relato,)
+        )
+
+        relato = cursor.fetchone()
 
     if relato is None:
         flash("Relato não encontrado.", "erro")
@@ -450,10 +470,13 @@ def visualizar_relato(id_relato):
 
 
 # =========================================
-# ATUALIZAR STATUS DE UM RELATO
+# ATUALIZAR STATUS DO RELATO
 # =========================================
 
-@app.route("/painel/atualizar-status/<int:id_relato>", methods=["POST"])
+@app.route(
+    "/painel/atualizar-status/<int:id_relato>",
+    methods=["POST"]
+)
 @profissional_obrigatorio
 def atualizar_status(id_relato):
 
@@ -469,22 +492,32 @@ def atualizar_status(id_relato):
 
     if status not in status_validos:
         flash("Status inválido.", "erro")
-        return redirect(url_for("visualizar_relato", id_relato=id_relato))
+        return redirect(
+            url_for("visualizar_relato", id_relato=id_relato)
+        )
 
     banco = conectar_banco()
 
-    resultado = banco.execute(
-        """
-        UPDATE relatos
-        SET status = ?
-        WHERE id_relato = ?
-        """,
-        (status, id_relato)
-    )
+    try:
+        with banco.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE relatos
+                SET status = %s
+                WHERE id_relato = %s
+                """,
+                (status, id_relato)
+            )
 
-    banco.commit()
+            encontrado = cursor.rowcount > 0
 
-    if resultado.rowcount == 0:
+        banco.commit()
+
+    except Exception:
+        banco.rollback()
+        raise
+
+    if not encontrado:
         flash("Relato não encontrado.", "erro")
         return redirect(url_for("painel_profissional"))
 
@@ -496,7 +529,7 @@ def atualizar_status(id_relato):
 
 
 # =========================================
-# ATUALIZAR SOLICITAÇÃO DE ATENDIMENTO
+# ATUALIZAR SOLICITAÇÃO
 # =========================================
 
 @app.route(
@@ -521,18 +554,26 @@ def atualizar_solicitacao(id_solicitacao):
 
     banco = conectar_banco()
 
-    resultado = banco.execute(
-        """
-        UPDATE solicitacoes_atendimento
-        SET status = ?
-        WHERE id_solicitacao = ?
-        """,
-        (status, id_solicitacao)
-    )
+    try:
+        with banco.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE solicitacoes_atendimento
+                SET status = %s
+                WHERE id_solicitacao = %s
+                """,
+                (status, id_solicitacao)
+            )
 
-    banco.commit()
+            encontrado = cursor.rowcount > 0
 
-    if resultado.rowcount == 0:
+        banco.commit()
+
+    except Exception:
+        banco.rollback()
+        raise
+
+    if not encontrado:
         flash("Solicitação não encontrada.", "erro")
     else:
         flash("Solicitação atualizada com sucesso!", "sucesso")
@@ -559,8 +600,5 @@ def logout():
 # INICIALIZAÇÃO
 # =========================================
 
-inicializar_banco()
-
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
