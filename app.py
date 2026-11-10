@@ -174,6 +174,30 @@ def fechar_banco(exception=None):
 
 def profissional_obrigatorio(funcao):
 
+# =========================================
+# PROTEÇÃO EXCLUSIVA DO ADMINISTRADOR
+# =========================================
+
+def administrador_obrigatorio(funcao):
+
+    @wraps(funcao)
+    def verificar_acesso(*args, **kwargs):
+
+        if "id_usuario" not in session:
+            flash("Faça login para continuar.", "aviso")
+            return redirect(url_for("login"))
+
+        if session.get("tipo") != "administrador":
+            flash(
+                "Somente administradores podem gerenciar profissionais.",
+                "erro"
+            )
+            return redirect(url_for("painel_profissional"))
+
+        return funcao(*args, **kwargs)
+
+    return verificar_acesso
+    
     @wraps(funcao)
     def verificar_acesso(*args, **kwargs):
 
