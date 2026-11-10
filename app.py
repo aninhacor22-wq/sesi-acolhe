@@ -17,9 +17,106 @@ from flask import (
     g
 )
 
-from werkzeug.security import check_password_hash
+from werkzeug.security import (
+    check_password_hash,
+    generate_password_hash
+)
 
+# =========================================
+# CRIAR PRIMEIRA CONTA ADMINISTRADORA
+# =========================================
 
+def garantir_administrador_inicial():
+
+    nome = os.environ.get("ADMIN_NOME", "").strip()
+    email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    senha = os.environ.get("ADMIN_SENHA", "")
+
+    banco = conectar_banco()
+
+    try:
+        with banco.cursor() as cursor:
+
+            # Evita duas criações simultâneas
+            cursor.execute(
+                "SELECT pg_advisory_xact_lock(%s)",
+                (7281946301,)
+            )
+
+            # Não cria outra administradora se já existir uma
+            cursor.execute(
+                """
+                SELECT id_usuario
+                FROM usuarios
+                WHERE tipo = 'administrador'
+                LIMIT 1
+                """
+            )
+
+            existente = cursor.fetchone()
+
+            if existente:
+                banco.commit()
+                return True
+
+            if not nome or not email or not senha:
+                banco.rollback()
+                app.logger.error(
+                    "Configure ADMIN_NOME, ADMIN_EMAIL e ADMIN_SENHA."
+                )
+                return False
+
+            if len(nome) > 150 or len(email) > 254 or len(senha) < 12:
+                banco.rollback()
+                app.logger.error(
+                    "Dados administrativos inválidos. "
+                    "A senha deve ter pelo menos 12 caracteres."
+                )
+                return False
+
+            senha_hash = generate_password_hash(senha)
+
+            cursor.execute(
+                """
+                INSERT INTO usuarios (
+                    nome,
+                    email,
+                    senha_hash,
+                    tipo,
+                    ativo
+                )
+                VALUES (%s, %s, %s, 'administrador', TRUE)
+                ON CONFLICT (email) DO NOTHING
+                RETURNING id_usuario
+                """,
+                (nome, email, senha_hash)
+            )
+
+            criado = cursor.fetchone()
+
+            if not criado:
+                banco.rollback()
+                app.logger.error(
+                    "O e-mail administrativo já está cadastrado "
+                    "em outra conta."
+                )
+                return False
+
+        banco.commit()
+
+        app.logger.info(
+            "Primeira conta administradora criada com sucesso."
+        )
+
+        return True
+
+    except Exception:
+        banco.rollback()
+        app.logger.exception(
+            "Erro ao criar a primeira conta administradora."
+        )
+        return False
+        
 # =========================================
 # CONFIGURAÇÕES
 # =========================================
@@ -460,6 +557,14 @@ def login():
             url_for("painel_profissional")
         )
 
+    if not garantir_administrador_inicial():
+        flash(
+            "Não foi possível preparar a conta administrativa. "
+            "Confira as configurações.",
+            "erro"
+        )
+        return render_template("login.html")
+    
     if request.method == "POST":
 
         email = request.form.get(
