@@ -1,46 +1,128 @@
 # 💜 SESI Acolhe
 
-### Ouvir • Acolher • Encaminhar
+**Ouvir • Acolher • Encaminhar**
 
-**Uma plataforma escolar voltada ao acolhimento, à escuta e ao bem-estar dos estudantes.**
+O SESI Acolhe é uma plataforma desenvolvida para oferecer aos estudantes um espaço digital de escuta, acolhimento e encaminhamento de situações que possam afetar seu bem-estar no ambiente escolar.
 
-## 🎯 1. Objetivo
+A plataforma permite registrar relatos anônimos ou identificados, solicitar atendimento e acompanhar o andamento das solicitações. Também disponibiliza uma área profissional para que a equipe responsável possa visualizar os registros e realizar os encaminhamentos necessários.
 
-O objetivo do SESI Acolhe é desenvolver uma plataforma digital que facilite a comunicação entre os estudantes e a equipe responsável pelo acolhimento escolar. A iniciativa busca promover a escuta, o apoio e o bem-estar dos alunos, oferecendo um canal acessível para o registro de relatos e a solicitação de atendimentos, contribuindo para um ambiente escolar mais acolhedor, seguro e inclusivo.
+## 🎯 Objetivo
 
-## 💡 2. Descrição do projeto
+Desenvolver uma ferramenta digital que facilite a comunicação entre estudantes e a equipe de acolhimento escolar, promovendo um ambiente mais seguro, respeitoso e acolhedor.
 
-O **SESI Acolhe** é uma proposta de plataforma digital criada para aproximar os estudantes da equipe de acolhimento da escola, facilitando a comunicação e a organização das demandas apresentadas pelos alunos.
+## ✨ Funcionalidades
 
-A plataforma pretende permitir que os estudantes compartilhem situações que necessitem de atenção, registrem relatos e solicitem atendimento. Também prevê recursos para que a equipe responsável organize e acompanhe as demandas recebidas.
+### Área do estudante
+- Envio de relatos anônimos.
+- Envio de relatos identificados.
+- Escolha da categoria do relato.
+- Geração de código de acompanhamento.
+- Consulta do andamento do relato por meio do código.
+- Solicitação de atendimento.
 
-O projeto considera a importância da privacidade, da confidencialidade e do cuidado com as informações compartilhadas, buscando incentivar os estudantes a procurar apoio quando necessário.
+### Área profissional
+- Login de profissionais cadastrados.
+- Painel para visualização de relatos e solicitações.
+- Consulta dos detalhes dos registros.
+- Atualização do status dos relatos.
+- Atualização do status das solicitações de atendimento.
+- Registro do histórico de alterações.
 
-### Problema identificado
+### Área administrativa
+- Gerenciamento de profissionais.
+- Cadastro de profissionais.
+- Edição de informações cadastrais.
+- Ativação e desativação de contas.
+- Controle de acesso às funcionalidades administrativas.
 
-Muitos estudantes enfrentam dificuldades emocionais, sociais ou escolares e nem sempre sabem como procurar ajuda ou se sentem confortáveis para compartilhar suas preocupações. O SESI Acolhe surge como uma proposta para facilitar esse contato e contribuir para uma cultura escolar baseada na empatia, no respeito e no cuidado.
+## 🛠️ Tecnologias utilizadas
 
-### Funcionalidades previstas
+| Tecnologia | Aplicação |
+|---|---|
+| Python | Linguagem principal |
+| Flask | Desenvolvimento do servidor e das rotas |
+| HTML5 | Estrutura das páginas |
+| CSS3 | Estilização e responsividade |
+| PostgreSQL | Banco de dados |
+| Supabase | Hospedagem e gerenciamento do banco |
+| psycopg2 | Conexão entre Python e PostgreSQL |
+| Render | Hospedagem da aplicação |
+| GitHub | Versionamento e armazenamento do código |
 
-- Registro de relatos dos estudantes.
-- Possibilidade de envio de relatos anônimos.
-- Solicitação de atendimentos.
-- Organização e acompanhamento das demandas.
-- Gestão dos relatos e atendimentos pela equipe autorizada.
+## 🗄️ Banco de dados
 
-*As funcionalidades apresentadas fazem parte da proposta do sistema e serão desenvolvidas conforme o andamento do projeto.*
+O projeto utiliza PostgreSQL por meio do Supabase.
 
-## 🛠️ 3. Tecnologias utilizadas
+Os dados armazenados incluem:
+- Informações dos usuários e profissionais.
+- Relatos enviados pelos estudantes.
+- Identificação dos relatos, quando aplicável.
+- Códigos de acompanhamento.
+- Solicitações de atendimento.
+- Status dos registros.
+- Histórico de alterações.
 
-- **SQL:** linguagem utilizada para definir e manipular estruturas de bancos de dados.
-- **SQLite:** sistema de gerenciamento de banco de dados utilizado na modelagem proposta.
-- **Git:** ferramenta de controle de versão.
-- **GitHub:** plataforma utilizada para hospedar o repositório e compartilhar os documentos.
-- **Markdown:** linguagem de marcação utilizada para estruturar a documentação no README.
+Os relatos anônimos e identificados possuem tratamentos diferentes, respeitando a opção de identificação escolhida pelo estudante.
 
-## 👥 4. Membros do grupo
+## 🔐 Segurança e controle de acesso
 
-O projeto é desenvolvido por uma equipe de sete integrantes, com responsabilidades distribuídas entre as atividades de planejamento, análise, modelagem, documentação e desenvolvimento.
+O sistema possui:
+- Autenticação de profissionais.
+- Controle de acesso por tipo de usuário.
+- Área administrativa restrita a administradores.
+- Proteção das rotas profissionais.
+- Encerramento de sessão pelo logout.
+- Armazenamento de credenciais com hash de senha.
+- Variáveis de ambiente para configurações sensíveis.
+
+O acesso às informações deve respeitar as permissões definidas para cada perfil e as regras de privacidade da instituição.
+
+## 🚀 Acesso ao projeto
+
+**Aplicação publicada:**
+
+https://sesi-acolhe.onrender.com/
+
+**Repositório GitHub:**
+
+https://github.com/aninhacor22-wq/sesi-acolhe
+
+## ⚙️ Execução local
+
+Para executar o projeto em ambiente local:
+
+1. Instale Python.
+2. Clone o repositório.
+3. Instale as dependências.
+4. Configure as variáveis de ambiente.
+5. Execute a aplicação.
+
+Instalação das dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure as seguintes variáveis de ambiente:
+
+```env
+SECRET_KEY=sua_chave_secreta
+DATABASE_URL=sua_url_de_conexao
+```
+
+Não compartilhe os valores reais dessas variáveis.
+
+Execute:
+
+```bash
+python app.py
+```
+
+A aplicação ficará disponível no endereço local indicado pelo Flask.
+
+## 👥 Integrantes
+
+Projeto desenvolvido por uma equipe de 7 integrantes.
 
 1. Alanny Carla
 2. Ana Clara Rodrigues
@@ -50,73 +132,21 @@ O projeto é desenvolvido por uma equipe de sete integrantes, com responsabilida
 6. Lorena Deodato
 7. Majory Eyshla
 
-## 🗄️ 5. Modelagem do banco de dados
+## 📌 Situação do projeto
 
-A modelagem do banco de dados foi planejada para organizar as informações necessárias ao funcionamento da plataforma, estabelecendo entidades e relacionamentos que contribuam para a integridade e a organização dos registros.
+O SESI Acolhe possui uma versão funcional publicada, com testes realizados nos principais fluxos da aplicação:
 
-O processo de modelagem contempla a definição das entidades, dos atributos, das chaves primárias e das chaves estrangeiras, conforme especificado nos documentos do projeto.
+- Envio de relatos anônimos e identificados.
+- Consulta por código de acompanhamento.
+- Solicitação de atendimento.
+- Gerenciamento de profissionais.
+- Atualização de status.
+- Registro de histórico.
+- Controle de permissões.
+- Persistência dos dados no PostgreSQL.
 
-O **Diagrama Entidade-Relacionamento (DER)** representa visualmente a estrutura planejada do banco de dados, enquanto o script SQL reúne os comandos referentes à criação das estruturas correspondentes.
+## 💜 Considerações finais
 
-### Documentos da modelagem
+O SESI Acolhe foi desenvolvido com o propósito de aproximar os estudantes da equipe de acolhimento escolar, oferecendo um canal organizado de comunicação, escuta e encaminhamento.
 
-- `DER.png`: representação visual do Diagrama Entidade-Relacionamento.
-- `script.sql`: contém os comandos SQL para criação das tabelas, definição dos relacionamentos, criação de índices e inserção de dados fictícios para demonstração.
-- `SESI_Acolhe_Modelagem_Banco_Dados.pdf`: documentação da modelagem.
-
-## 📑 6. Documentação do projeto
-
-O repositório reúne os documentos produzidos durante as etapas iniciais do desenvolvimento:
-
-| Arquivo | Descrição |
-|---|---|
-| `SESI_Acolhe_Ideacao_e_Requisitos.pdf` | Apresenta a ideia do projeto, o problema identificado e os requisitos funcionais e não funcionais. |
-| `SESI_Acolhe_Modelagem_Banco_Dados.pdf` | Apresenta a documentação da modelagem do banco de dados. |
-| `DER.png` | Contém o Diagrama Entidade-Relacionamento. |
-| `script.sql` | Contém os comandos SQL relacionados à estrutura do banco de dados. |
-
-## 📂 7. Estrutura do repositório
-
-```text
-SESI-Acolhe/
-├── README.md
-├── DER.png
-├── script.sql
-├── SESI_Acolhe_Ideacao_e_Requisitos.pdf
-└── SESI_Acolhe_Modelagem_Banco_Dados.pdf
-```
-
-*Os nomes e a estrutura acima devem corresponder aos arquivos efetivamente presentes no repositório do GitHub.*
-
-## 🔒 8. Privacidade e segurança
-
-Como a plataforma poderá lidar com informações pessoais e relatos sensíveis, a privacidade e a confidencialidade são aspectos importantes desde o planejamento.
-
-Entre os cuidados previstos estão o controle de acesso às informações, a proteção dos dados dos estudantes e o tratamento adequado dos relatos anônimos. Esses recursos deverão ser implementados e validados durante o desenvolvimento do sistema.
-
-## 🚀 9. Futuras implementações
-
-Nas próximas etapas, estão previstas as seguintes melhorias e funcionalidades:
-
-- Desenvolvimento da interface da plataforma.
-- Implementação do cadastro e da autenticação de usuários.
-- Integração da interface com o banco de dados.
-- Criação de formulários para registro de relatos e solicitação de atendimento.
-- Implementação da opção de envio de relatos anônimos.
-- Desenvolvimento de uma área administrativa para a equipe responsável pelo acolhimento.
-- Acompanhamento do status dos relatos e das solicitações.
-- Implementação de mecanismos de segurança e controle de acesso.
-- Realização de testes funcionais e de usabilidade.
-- Validação da plataforma para verificar se atende aos requisitos definidos.
-
-## 📌 10. Etapa atual do projeto
-
-O SESI Acolhe encontra-se em fase de planejamento e estruturação, com a elaboração dos documentos de ideação, levantamento de requisitos e modelagem do banco de dados.
-
-As próximas etapas envolvem a implementação das funcionalidades, a integração dos componentes, os testes e a validação da solução.
-
-## 💜 Nossa proposta
-
-Acreditamos que uma escola melhor começa com a escuta e o cuidado com as pessoas.
-
-**SESI Acolhe — Ouvir para compreender. Acolher para apoiar. Encaminhar para transformar.**
+**Ouvir é o primeiro passo para acolher.**
