@@ -34,6 +34,18 @@
 
     </div>
 
+     <!-- GERENCIAMENTO DE PROFISSIONAIS -->
+
+    {% if session.get('tipo') == 'administrador' %}
+
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('gerenciar_profissionais') }}"
+           class="table-action">
+            👥 Gerenciar profissionais →
+        </a>
+    </div>
+
+    {% endif %}
 
     <!-- INDICADORES -->
 
