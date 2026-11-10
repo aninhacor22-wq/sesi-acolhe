@@ -1,5 +1,6 @@
 
 import os
+import re
 import secrets
 from functools import wraps
 
@@ -9,6 +10,7 @@ from psycopg2.extras import RealDictCursor
 from flask import (
     Flask,
     render_template,
+    render_template_string,
     request,
     redirect,
     url_for,
@@ -21,6 +23,59 @@ from werkzeug.security import (
     check_password_hash,
     generate_password_hash
 )
+
+
+# =========================================
+# CONFIGURAÇÕES
+# =========================================
+
+app = Flask(__name__)
+
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+
+if not app.config["SECRET_KEY"]:
+    raise RuntimeError(
+        "Configure SECRET_KEY nas variáveis do Render."
+    )
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError(
+        "Configure DATABASE_URL nas variáveis do Render."
+    )
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("RENDER") == "true"
+)
+
+
+# =========================================
+# CONEXÃO COM SUPABASE POSTGRESQL
+# =========================================
+
+def conectar_banco():
+
+    if "banco" not in g:
+        g.banco = psycopg2.connect(
+            DATABASE_URL,
+            sslmode="require",
+            cursor_factory=RealDictCursor
+        )
+
+    return g.banco
+
+
+@app.teardown_appcontext
+def fechar_banco(exception=None):
+
+    banco = g.pop("banco", None)
+
+    if banco is not None:
+        banco.close()
+
 
 # =========================================
 # CRIAR PRIMEIRA CONTA ADMINISTRADORA
@@ -37,13 +92,11 @@ def garantir_administrador_inicial():
     try:
         with banco.cursor() as cursor:
 
-            # Evita duas criações simultâneas
             cursor.execute(
                 "SELECT pg_advisory_xact_lock(%s)",
                 (7281946301,)
             )
 
-            # Não cria outra administradora se já existir uma
             cursor.execute(
                 """
                 SELECT id_usuario
@@ -66,11 +119,15 @@ def garantir_administrador_inicial():
                 )
                 return False
 
-            if len(nome) > 150 or len(email) > 254 or len(senha) < 12:
+            if (
+                len(nome) > 150
+                or len(email) > 254
+                or len(senha) < 12
+                or not email_valido(email)
+            ):
                 banco.rollback()
                 app.logger.error(
-                    "Dados administrativos inválidos. "
-                    "A senha deve ter pelo menos 12 caracteres."
+                    "Dados administrativos inválidos."
                 )
                 return False
 
@@ -97,15 +154,14 @@ def garantir_administrador_inicial():
             if not criado:
                 banco.rollback()
                 app.logger.error(
-                    "O e-mail administrativo já está cadastrado "
-                    "em outra conta."
+                    "O e-mail administrativo já está cadastrado."
                 )
                 return False
 
         banco.commit()
 
         app.logger.info(
-            "Primeira conta administradora criada com sucesso."
+            "Primeira conta administradora criada."
         )
 
         return True
@@ -113,59 +169,61 @@ def garantir_administrador_inicial():
     except Exception:
         banco.rollback()
         app.logger.exception(
-            "Erro ao criar a primeira conta administradora."
+            "Erro ao criar a conta administradora."
         )
         return False
-        
+
+
 # =========================================
-# CONFIGURAÇÕES
+# VALIDAÇÃO DE E-MAIL
 # =========================================
 
-app = Flask(__name__)
+def email_valido(email):
 
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    if not email or len(email) > 254:
+        return False
 
-if not app.config["SECRET_KEY"]:
-    raise RuntimeError(
-        "Configure SECRET_KEY nas variáveis do Render."
+    return bool(
+        re.fullmatch(
+            r"[^@\s]+@[^@\s]+\.[^@\s]+",
+            email
+        )
     )
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise RuntimeError(
-        "Configure DATABASE_URL nas variáveis do Render."
-    )
-
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax"
-)
-
 
 # =========================================
-# CONEXÃO POSTGRESQL - SUPABASE
+# VERIFICAR USUÁRIO LOGADO
 # =========================================
 
-def conectar_banco():
+def usuario_logado():
 
-    if "banco" not in g:
-        g.banco = psycopg2.connect(
-            DATABASE_URL,
-            sslmode="require",
-            cursor_factory=RealDictCursor
+    id_usuario = session.get("id_usuario")
+
+    if not id_usuario:
+        return None
+
+    banco = conectar_banco()
+
+    with banco.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id_usuario, nome, email, tipo, ativo
+            FROM usuarios
+            WHERE id_usuario = %s
+            """,
+            (id_usuario,)
         )
 
-    return g.banco
+        usuario = cursor.fetchone()
 
+    if not usuario or not usuario["ativo"]:
+        session.clear()
+        return None
 
-@app.teardown_appcontext
-def fechar_banco(exception=None):
+    session["nome"] = usuario["nome"]
+    session["tipo"] = usuario["tipo"]
 
-    banco = g.pop("banco", None)
-
-    if banco is not None:
-        banco.close()
+    return usuario
 
 
 # =========================================
@@ -173,6 +231,51 @@ def fechar_banco(exception=None):
 # =========================================
 
 def profissional_obrigatorio(funcao):
+
+    @wraps(funcao)
+    def verificar_acesso(*args, **kwargs):
+
+        if not session.get("id_usuario"):
+            flash(
+                "Faça login para acessar essa área.",
+                "aviso"
+            )
+            return redirect(url_for("login"))
+
+        try:
+            usuario = usuario_logado()
+        except Exception:
+            app.logger.exception(
+                "Erro ao verificar usuário."
+            )
+            flash(
+                "Não foi possível verificar seu acesso.",
+                "erro"
+            )
+            return redirect(url_for("login"))
+
+        if not usuario:
+            flash(
+                "Sua sessão expirou ou sua conta está inativa.",
+                "aviso"
+            )
+            return redirect(url_for("login"))
+
+        if usuario["tipo"] not in (
+            "profissional",
+            "administrador"
+        ):
+            session.clear()
+            flash(
+                "Você não tem permissão para acessar essa página.",
+                "erro"
+            )
+            return redirect(url_for("login"))
+
+        return funcao(*args, **kwargs)
+
+    return verificar_acesso
+
 
 # =========================================
 # PROTEÇÃO EXCLUSIVA DO ADMINISTRADOR
@@ -183,43 +286,40 @@ def administrador_obrigatorio(funcao):
     @wraps(funcao)
     def verificar_acesso(*args, **kwargs):
 
-        if "id_usuario" not in session:
-            flash("Faça login para continuar.", "aviso")
-            return redirect(url_for("login"))
-
-        if session.get("tipo") != "administrador":
+        if not session.get("id_usuario"):
             flash(
-                "Somente administradores podem gerenciar profissionais.",
-                "erro"
-            )
-            return redirect(url_for("painel_profissional"))
-
-        return funcao(*args, **kwargs)
-
-    return verificar_acesso
-    
-    @wraps(funcao)
-    def verificar_acesso(*args, **kwargs):
-
-        if "id_usuario" not in session:
-            flash(
-                "Faça login para acessar essa área.",
+                "Faça login para continuar.",
                 "aviso"
             )
             return redirect(url_for("login"))
 
-        if session.get("tipo") not in (
-            "profissional",
-            "administrador"
-        ):
-            session.clear()
-
+        try:
+            usuario = usuario_logado()
+        except Exception:
+            app.logger.exception(
+                "Erro ao verificar administrador."
+            )
             flash(
-                "Você não tem permissão para acessar essa página.",
+                "Não foi possível verificar seu acesso.",
                 "erro"
             )
-
             return redirect(url_for("login"))
+
+        if not usuario:
+            flash(
+                "Sua sessão expirou ou sua conta está inativa.",
+                "aviso"
+            )
+            return redirect(url_for("login"))
+
+        if usuario["tipo"] != "administrador":
+            flash(
+                "Somente administradores podem gerenciar profissionais.",
+                "erro"
+            )
+            return redirect(
+                url_for("painel_profissional")
+            )
 
         return funcao(*args, **kwargs)
 
@@ -232,6 +332,7 @@ def administrador_obrigatorio(funcao):
 
 @app.route("/")
 def inicio():
+
     return render_template("index.html")
 
 
@@ -314,12 +415,20 @@ def relatar():
             )
             return render_template("relatar.html")
 
-        if not anonimo and email and "@" not in email:
-            flash(
-                "Informe um e-mail válido.",
-                "erro"
-            )
-            return render_template("relatar.html")
+        if not anonimo:
+            if len(nome) > 150:
+                flash(
+                    "O nome deve ter no máximo 150 caracteres.",
+                    "erro"
+                )
+                return render_template("relatar.html")
+
+            if email and not email_valido(email):
+                flash(
+                    "Informe um e-mail válido.",
+                    "erro"
+                )
+                return render_template("relatar.html")
 
         codigo = "SA-" + secrets.token_hex(8).upper()
 
@@ -379,13 +488,14 @@ def relatar():
 
         except Exception:
             banco.rollback()
-            app.logger.exception("Erro ao registrar relato.")
+            app.logger.exception(
+                "Erro ao registrar relato."
+            )
 
             flash(
                 "Não foi possível registrar o relato. Tente novamente.",
                 "erro"
             )
-
             return render_template("relatar.html")
 
         return render_template(
@@ -401,7 +511,10 @@ def relatar():
 # SOLICITAR ATENDIMENTO
 # =========================================
 
-@app.route("/solicitar-atendimento", methods=["GET", "POST"])
+@app.route(
+    "/solicitar-atendimento",
+    methods=["GET", "POST"]
+)
 def solicitar_atendimento():
 
     if request.method == "POST":
@@ -436,7 +549,7 @@ def solicitar_atendimento():
                 "solicitar_atendimento.html"
             )
 
-        if "@" not in email:
+        if not email_valido(email):
             flash(
                 "Informe um e-mail válido.",
                 "erro"
@@ -506,7 +619,6 @@ def solicitar_atendimento():
                 "Não foi possível enviar a solicitação. Tente novamente.",
                 "erro"
             )
-
             return render_template(
                 "solicitar_atendimento.html"
             )
@@ -516,7 +628,9 @@ def solicitar_atendimento():
             sucesso=True
         )
 
-    return render_template("solicitar_atendimento.html")
+    return render_template(
+        "solicitar_atendimento.html"
+    )
 
 
 # =========================================
@@ -541,26 +655,33 @@ def acompanhar():
         else:
             banco = conectar_banco()
 
-            with banco.cursor() as cursor:
+            try:
+                with banco.cursor() as cursor:
 
-                cursor.execute(
-                    """
-                    SELECT
-                        codigo_acompanhamento,
-                        status,
-                        data_criacao
-                    FROM relatos
-                    WHERE codigo_acompanhamento = %s
-                    """,
-                    (codigo,)
+                    cursor.execute(
+                        """
+                        SELECT
+                            codigo_acompanhamento,
+                            status,
+                            data_criacao
+                        FROM relatos
+                        WHERE codigo_acompanhamento = %s
+                        """,
+                        (codigo,)
+                    )
+
+                    relato = cursor.fetchone()
+
+                if relato is None:
+                    erro = (
+                        "Código não encontrado. Confira e tente novamente."
+                    )
+
+            except Exception:
+                app.logger.exception(
+                    "Erro ao consultar acompanhamento."
                 )
-
-                relato = cursor.fetchone()
-
-            if relato is None:
-                erro = (
-                    "Código não encontrado. Confira e tente novamente."
-                )
+                erro = "Não foi possível consultar o relato."
 
     return render_template(
         "acompanhar.html",
@@ -576,42 +697,75 @@ def acompanhar():
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
-    if "id_usuario" in session:
-        return redirect(
-            url_for("painel_profissional")
-        )
+    if session.get("id_usuario"):
+
+        try:
+            usuario = usuario_logado()
+        except Exception:
+            app.logger.exception(
+                "Erro ao verificar sessão no login."
+            )
+            usuario = None
+
+        if usuario and usuario["tipo"] in (
+            "profissional",
+            "administrador"
+        ):
+            return redirect(
+                url_for("painel_profissional")
+            )
 
     if not garantir_administrador_inicial():
         flash(
             "Não foi possível preparar a conta administrativa. "
-            "Confira as configurações.",
+            "Confira as configurações do Render.",
             "erro"
         )
         return render_template("login.html")
-    
+
     if request.method == "POST":
 
         email = request.form.get(
             "email", ""
         ).strip().lower()
 
-        senha = request.form.get("senha", "")
+        senha = request.form.get(
+            "senha", ""
+        )
+
+        if not email or not senha:
+            flash(
+                "Informe seu e-mail e sua senha.",
+                "erro"
+            )
+            return render_template("login.html")
 
         banco = conectar_banco()
 
-        with banco.cursor() as cursor:
+        try:
+            with banco.cursor() as cursor:
 
-            cursor.execute(
-                """
-                SELECT *
-                FROM usuarios
-                WHERE email = %s
-                AND ativo = TRUE
-                """,
-                (email,)
+                cursor.execute(
+                    """
+                    SELECT *
+                    FROM usuarios
+                    WHERE LOWER(email) = %s
+                    AND ativo = TRUE
+                    """,
+                    (email,)
+                )
+
+                usuario = cursor.fetchone()
+
+        except Exception:
+            app.logger.exception(
+                "Erro ao consultar usuário no login."
             )
-
-            usuario = cursor.fetchone()
+            flash(
+                "Não foi possível realizar o login.",
+                "erro"
+            )
+            return render_template("login.html")
 
         if (
             usuario
@@ -658,56 +812,67 @@ def painel_profissional():
 
     banco = conectar_banco()
 
-    with banco.cursor() as cursor:
+    try:
+        with banco.cursor() as cursor:
 
-        cursor.execute(
-            """
-            SELECT *
-            FROM relatos
-            ORDER BY data_criacao DESC
-            """
-        )
-        relatos = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT *
+                FROM relatos
+                ORDER BY data_criacao DESC
+                """
+            )
+            relatos = cursor.fetchall()
 
-        cursor.execute(
-            """
-            SELECT *
-            FROM solicitacoes_atendimento
-            ORDER BY data_solicitacao DESC
-            """
-        )
-        solicitacoes = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT *
+                FROM solicitacoes_atendimento
+                ORDER BY data_solicitacao DESC
+                """
+            )
+            solicitacoes = cursor.fetchall()
 
-        cursor.execute(
-            "SELECT COUNT(*) AS total FROM relatos"
-        )
-        total_relatos = cursor.fetchone()["total"]
+            cursor.execute(
+                "SELECT COUNT(*) AS total FROM relatos"
+            )
+            total_relatos = cursor.fetchone()["total"]
 
-        cursor.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM relatos
-            WHERE status = 'Recebido'
-            """
-        )
-        pendentes = cursor.fetchone()["total"]
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM relatos
+                WHERE status = 'Recebido'
+                """
+            )
+            pendentes = cursor.fetchone()["total"]
 
-        cursor.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM relatos
-            WHERE status = 'Em acompanhamento'
-            """
-        )
-        em_acompanhamento = cursor.fetchone()["total"]
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM relatos
+                WHERE status = 'Em acompanhamento'
+                """
+            )
+            em_acompanhamento = cursor.fetchone()["total"]
 
-        cursor.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM solicitacoes_atendimento
-            """
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM solicitacoes_atendimento
+                """
+            )
+            total_solicitacoes = cursor.fetchone()["total"]
+
+    except Exception:
+        app.logger.exception(
+            "Erro ao carregar painel profissional."
         )
-        total_solicitacoes = cursor.fetchone()["total"]
+        flash(
+            "Não foi possível carregar o painel.",
+            "erro"
+        )
+        return redirect(url_for("inicio"))
 
     return render_template(
         "painel_profissional.html",
@@ -780,8 +945,10 @@ def atualizar_status(id_relato):
     ]
 
     if status not in status_validos:
-        flash("Status inválido.", "erro")
-
+        flash(
+            "Status inválido.",
+            "erro"
+        )
         return redirect(
             url_for(
                 "visualizar_relato",
@@ -808,12 +975,10 @@ def atualizar_status(id_relato):
 
             if relato is None:
                 banco.rollback()
-
                 flash(
                     "Relato não encontrado.",
                     "erro"
                 )
-
                 return redirect(
                     url_for("painel_profissional")
                 )
@@ -856,12 +1021,10 @@ def atualizar_status(id_relato):
         app.logger.exception(
             "Erro ao atualizar status do relato."
         )
-
         flash(
             "Não foi possível atualizar o relato.",
             "erro"
         )
-
         return redirect(
             url_for(
                 "visualizar_relato",
@@ -930,12 +1093,10 @@ def atualizar_solicitacao(id_solicitacao):
 
             if solicitacao is None:
                 banco.rollback()
-
                 flash(
                     "Solicitação não encontrada.",
                     "erro"
                 )
-
                 return redirect(
                     url_for("painel_profissional")
                 )
@@ -978,12 +1139,10 @@ def atualizar_solicitacao(id_solicitacao):
         app.logger.exception(
             "Erro ao atualizar solicitação."
         )
-
         flash(
             "Não foi possível atualizar a solicitação.",
             "erro"
         )
-
         return redirect(
             url_for("painel_profissional")
         )
@@ -995,6 +1154,901 @@ def atualizar_solicitacao(id_solicitacao):
 
     return redirect(
         url_for("painel_profissional")
+    )
+
+
+# =========================================
+# GERENCIAR PROFISSIONAIS
+# =========================================
+
+PAGINA_PROFISSIONAIS = """
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gerenciar profissionais | SESI Acolhe</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 16px;
+            background: #f7f4fb;
+            color: #352b40;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: auto;
+        }
+
+        .topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #56377e;
+            margin-bottom: 8px;
+        }
+
+        .subtitulo {
+            color: #756b80;
+        }
+
+        .botao {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 9px;
+            background: #7851a9;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .botao:hover {
+            background: #56377e;
+        }
+
+        .secundario {
+            background: #e9e1f2;
+            color: #56377e;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 14px;
+            box-shadow: 0 3px 15px #0000000c;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        th, td {
+            padding: 14px 10px;
+            border-bottom: 1px solid #eee8f3;
+            text-align: left;
+        }
+
+        th {
+            color: #56377e;
+        }
+
+        .ativo {
+            color: #23834d;
+            font-weight: bold;
+        }
+
+        .inativo {
+            color: #b34a4a;
+            font-weight: bold;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mensagem {
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background: #eee8f8;
+            color: #56377e;
+        }
+
+        .vazio {
+            padding: 25px;
+            text-align: center;
+            color: #756b80;
+        }
+
+        form {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="topo">
+        <div>
+            <h1>Gerenciar profissionais</h1>
+            <div class="subtitulo">
+                Administração de contas do SESI Acolhe
+            </div>
+        </div>
+
+        <a class="botao" href="{{ url_for('cadastrar_profissional') }}">
+            + Cadastrar profissional
+        </a>
+    </div>
+
+    <a class="botao secundario"
+       href="{{ url_for('painel_profissional') }}">
+        ← Voltar ao painel
+    </a>
+
+    <br><br>
+
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% for categoria, mensagem in mensagens %}
+            <div class="mensagem">{{ mensagem }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="card">
+
+        {% if profissionais %}
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Cargo</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for profissional in profissionais %}
+                <tr>
+                    <td>{{ profissional.nome }}</td>
+                    <td>{{ profissional.email }}</td>
+                    <td>{{ profissional.cargo }}</td>
+
+                    <td>
+                        {% if profissional.ativo %}
+                            <span class="ativo">Ativo</span>
+                        {% else %}
+                            <span class="inativo">Inativo</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div class="acoes">
+
+                            <a class="botao secundario"
+                               href="{{ url_for(
+                                   'editar_profissional',
+                                   id_usuario=profissional.id_usuario
+                               ) }}">
+                                Editar
+                            </a>
+
+                            <form method="POST"
+                                  action="{{ url_for(
+                                      'alterar_situacao_profissional',
+                                      id_usuario=profissional.id_usuario
+                                  ) }}">
+
+                                {% if profissional.ativo %}
+                                    <button class="botao"
+                                            type="submit"
+                                            onclick="return confirm('Deseja desativar este profissional?')">
+                                        Desativar
+                                    </button>
+                                {% else %}
+                                    <button class="botao"
+                                            type="submit"
+                                            onclick="return confirm('Deseja reativar este profissional?')">
+                                        Reativar
+                                    </button>
+                                {% endif %}
+
+                            </form>
+
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+
+            <div class="vazio">
+                Nenhum profissional cadastrado ainda.
+            </div>
+
+        {% endif %}
+
+    </div>
+</div>
+</body>
+</html>
+"""
+
+
+# =========================================
+# FORMULÁRIO DE PROFISSIONAL
+# =========================================
+
+FORMULARIO_PROFISSIONAL = """
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ titulo }} | SESI Acolhe</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 16px;
+            background: #f7f4fb;
+            color: #352b40;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 620px;
+            margin: 35px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 3px 15px #0000000c;
+        }
+
+        h1 {
+            color: #56377e;
+        }
+
+        p {
+            color: #756b80;
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 7px;
+            font-weight: bold;
+            color: #56377e;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #d9cde6;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        input:focus {
+            outline: 2px solid #b99bd8;
+        }
+
+        button, .voltar {
+            display: inline-block;
+            margin-top: 22px;
+            padding: 13px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #7851a9;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .voltar {
+            background: #e9e1f2;
+            color: #56377e;
+            margin-left: 8px;
+        }
+
+        .mensagem {
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background: #eee8f8;
+            color: #56377e;
+        }
+
+        small {
+            color: #756b80;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="card">
+
+        <h1>{{ titulo }}</h1>
+        <p>{{ descricao }}</p>
+
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% for categoria, mensagem in mensagens %}
+                <div class="mensagem">{{ mensagem }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+
+            <label for="nome">Nome completo</label>
+            <input
+                type="text"
+                id="nome"
+                name="nome"
+                maxlength="150"
+                value="{{ profissional.nome if profissional else '' }}"
+                required
+            >
+
+            <label for="email">E-mail</label>
+            <input
+                type="email"
+                id="email"
+                name="email"
+                maxlength="254"
+                value="{{ profissional.email if profissional else '' }}"
+                required
+            >
+
+            <label for="cargo">Cargo / função</label>
+            <input
+                type="text"
+                id="cargo"
+                name="cargo"
+                maxlength="100"
+                value="{{ profissional.cargo if profissional else '' }}"
+                placeholder="Ex.: Psicólogo(a), Orientador(a)..."
+                required
+            >
+
+            <label for="senha">
+                {% if profissional %}
+                    Nova senha (opcional)
+                {% else %}
+                    Senha inicial
+                {% endif %}
+            </label>
+
+            <input
+                type="password"
+                id="senha"
+                name="senha"
+                minlength="12"
+                {% if not profissional %}required{% endif %}
+                autocomplete="new-password"
+            >
+
+            {% if profissional %}
+                <small>
+                    Deixe em branco para manter a senha atual.
+                    A nova senha deve ter pelo menos 12 caracteres.
+                </small>
+            {% else %}
+                <small>
+                    A senha deve ter pelo menos 12 caracteres.
+                </small>
+            {% endif %}
+
+            <br>
+
+            <button type="submit">
+                {{ botao }}
+            </button>
+
+            <a class="voltar"
+               href="{{ url_for('gerenciar_profissionais') }}">
+                Cancelar
+            </a>
+
+        </form>
+
+    </div>
+</div>
+</body>
+</html>
+"""
+
+
+# =========================================
+# LISTAR PROFISSIONAIS
+# =========================================
+
+@app.route("/painel/profissionais")
+@administrador_obrigatorio
+def gerenciar_profissionais():
+
+    banco = conectar_banco()
+
+    try:
+        with banco.cursor() as cursor:
+
+            cursor.execute(
+                """
+                SELECT
+                    id_usuario,
+                    nome,
+                    email,
+                    cargo,
+                    ativo
+                FROM usuarios
+                WHERE tipo = 'profissional'
+                ORDER BY ativo DESC, nome ASC
+                """
+            )
+
+            profissionais = cursor.fetchall()
+
+    except Exception:
+        app.logger.exception(
+            "Erro ao listar profissionais."
+        )
+        flash(
+            "Não foi possível carregar os profissionais.",
+            "erro"
+        )
+        profissionais = []
+
+    return render_template_string(
+        PAGINA_PROFISSIONAIS,
+        profissionais=profissionais
+    )
+
+
+# =========================================
+# CADASTRAR PROFISSIONAL
+# =========================================
+
+@app.route(
+    "/painel/profissionais/cadastrar",
+    methods=["GET", "POST"]
+)
+@administrador_obrigatorio
+def cadastrar_profissional():
+
+    if request.method == "POST":
+
+        nome = request.form.get(
+            "nome", ""
+        ).strip()
+
+        email = request.form.get(
+            "email", ""
+        ).strip().lower()
+
+        cargo = request.form.get(
+            "cargo", ""
+        ).strip()
+
+        senha = request.form.get(
+            "senha", ""
+        )
+
+        if not nome or not email or not cargo or not senha:
+            flash(
+                "Preencha todos os campos.",
+                "erro"
+            )
+
+        elif len(nome) > 150:
+            flash(
+                "O nome deve ter no máximo 150 caracteres.",
+                "erro"
+            )
+
+        elif not email_valido(email):
+            flash(
+                "Informe um e-mail válido.",
+                "erro"
+            )
+
+        elif len(cargo) > 100:
+            flash(
+                "O cargo deve ter no máximo 100 caracteres.",
+                "erro"
+            )
+
+        elif len(senha) < 12:
+            flash(
+                "A senha deve ter pelo menos 12 caracteres.",
+                "erro"
+            )
+
+        else:
+            banco = conectar_banco()
+
+            try:
+                with banco.cursor() as cursor:
+
+                    cursor.execute(
+                        """
+                        SELECT id_usuario
+                        FROM usuarios
+                        WHERE LOWER(email) = %s
+                        """,
+                        (email,)
+                    )
+
+                    existente = cursor.fetchone()
+
+                    if existente:
+                        flash(
+                            "Já existe uma conta cadastrada com esse e-mail.",
+                            "erro"
+                        )
+
+                    else:
+                        senha_hash = generate_password_hash(senha)
+
+                        cursor.execute(
+                            """
+                            INSERT INTO usuarios (
+                                nome,
+                                email,
+                                senha_hash,
+                                tipo,
+                                ativo,
+                                cargo
+                            )
+                            VALUES (%s, %s, %s, 'profissional', TRUE, %s)
+                            """,
+                            (
+                                nome,
+                                email,
+                                senha_hash,
+                                cargo
+                            )
+                        )
+
+                        banco.commit()
+
+                        flash(
+                            "Profissional cadastrado com sucesso!",
+                            "sucesso"
+                        )
+
+                        return redirect(
+                            url_for("gerenciar_profissionais")
+                        )
+
+            except Exception:
+                banco.rollback()
+                app.logger.exception(
+                    "Erro ao cadastrar profissional."
+                )
+                flash(
+                    "Não foi possível cadastrar. Verifique os dados.",
+                    "erro"
+                )
+
+    return render_template_string(
+        FORMULARIO_PROFISSIONAL,
+        titulo="Cadastrar profissional",
+        descricao="Preencha os dados para criar uma nova conta.",
+        botao="Cadastrar profissional",
+        profissional=None
+    )
+
+
+# =========================================
+# EDITAR PROFISSIONAL
+# =========================================
+
+@app.route(
+    "/painel/profissionais/<int:id_usuario>/editar",
+    methods=["GET", "POST"]
+)
+@administrador_obrigatorio
+def editar_profissional(id_usuario):
+
+    banco = conectar_banco()
+
+    try:
+        with banco.cursor() as cursor:
+
+            cursor.execute(
+                """
+                SELECT
+                    id_usuario,
+                    nome,
+                    email,
+                    cargo,
+                    ativo
+                FROM usuarios
+                WHERE id_usuario = %s
+                AND tipo = 'profissional'
+                """,
+                (id_usuario,)
+            )
+
+            profissional = cursor.fetchone()
+
+    except Exception:
+        app.logger.exception(
+            "Erro ao consultar profissional."
+        )
+        flash(
+            "Não foi possível consultar o profissional.",
+            "erro"
+        )
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    if not profissional:
+        flash(
+            "Profissional não encontrado.",
+            "erro"
+        )
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    if request.method == "POST":
+
+        nome = request.form.get(
+            "nome", ""
+        ).strip()
+
+        email = request.form.get(
+            "email", ""
+        ).strip().lower()
+
+        cargo = request.form.get(
+            "cargo", ""
+        ).strip()
+
+        senha = request.form.get(
+            "senha", ""
+        )
+
+        if not nome or not email or not cargo:
+            flash(
+                "Nome, e-mail e cargo são obrigatórios.",
+                "erro"
+            )
+
+        elif len(nome) > 150:
+            flash(
+                "O nome deve ter no máximo 150 caracteres.",
+                "erro"
+            )
+
+        elif not email_valido(email):
+            flash(
+                "Informe um e-mail válido.",
+                "erro"
+            )
+
+        elif len(cargo) > 100:
+            flash(
+                "O cargo deve ter no máximo 100 caracteres.",
+                "erro"
+            )
+
+        elif senha and len(senha) < 12:
+            flash(
+                "A nova senha deve ter pelo menos 12 caracteres.",
+                "erro"
+            )
+
+        else:
+            try:
+                with banco.cursor() as cursor:
+
+                    cursor.execute(
+                        """
+                        SELECT id_usuario
+                        FROM usuarios
+                        WHERE LOWER(email) = %s
+                        AND id_usuario <> %s
+                        """,
+                        (email, id_usuario)
+                    )
+
+                    existente = cursor.fetchone()
+
+                    if existente:
+                        flash(
+                            "Esse e-mail já pertence a outra conta.",
+                            "erro"
+                        )
+
+                    else:
+                        if senha:
+                            senha_hash = generate_password_hash(senha)
+
+                            cursor.execute(
+                                """
+                                UPDATE usuarios
+                                SET nome = %s,
+                                    email = %s,
+                                    cargo = %s,
+                                    senha_hash = %s
+                                WHERE id_usuario = %s
+                                AND tipo = 'profissional'
+                                """,
+                                (
+                                    nome,
+                                    email,
+                                    cargo,
+                                    senha_hash,
+                                    id_usuario
+                                )
+                            )
+
+                        else:
+                            cursor.execute(
+                                """
+                                UPDATE usuarios
+                                SET nome = %s,
+                                    email = %s,
+                                    cargo = %s
+                                WHERE id_usuario = %s
+                                AND tipo = 'profissional'
+                                """,
+                                (
+                                    nome,
+                                    email,
+                                    cargo,
+                                    id_usuario
+                                )
+                            )
+
+                        banco.commit()
+
+                        flash(
+                            "Dados do profissional atualizados!",
+                            "sucesso"
+                        )
+
+                        return redirect(
+                            url_for("gerenciar_profissionais")
+                        )
+
+            except Exception:
+                banco.rollback()
+                app.logger.exception(
+                    "Erro ao editar profissional."
+                )
+                flash(
+                    "Não foi possível atualizar os dados.",
+                    "erro"
+                )
+
+        profissional = {
+            **profissional,
+            "nome": nome,
+            "email": email,
+            "cargo": cargo
+        }
+
+    return render_template_string(
+        FORMULARIO_PROFISSIONAL,
+        titulo="Editar profissional",
+        descricao="Atualize os dados da conta profissional.",
+        botao="Salvar alterações",
+        profissional=profissional
+    )
+
+
+# =========================================
+# ATIVAR / DESATIVAR PROFISSIONAL
+# =========================================
+
+@app.route(
+    "/painel/profissionais/<int:id_usuario>/situacao",
+    methods=["POST"]
+)
+@administrador_obrigatorio
+def alterar_situacao_profissional(id_usuario):
+
+    banco = conectar_banco()
+
+    try:
+        with banco.cursor() as cursor:
+
+            cursor.execute(
+                """
+                SELECT id_usuario, ativo
+                FROM usuarios
+                WHERE id_usuario = %s
+                AND tipo = 'profissional'
+                FOR UPDATE
+                """,
+                (id_usuario,)
+            )
+
+            profissional = cursor.fetchone()
+
+            if not profissional:
+                banco.rollback()
+                flash(
+                    "Profissional não encontrado.",
+                    "erro"
+                )
+                return redirect(
+                    url_for("gerenciar_profissionais")
+                )
+
+            nova_situacao = not profissional["ativo"]
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET ativo = %s
+                WHERE id_usuario = %s
+                AND tipo = 'profissional'
+                """,
+                (nova_situacao, id_usuario)
+            )
+
+        banco.commit()
+
+        if nova_situacao:
+            flash(
+                "Profissional reativado com sucesso!",
+                "sucesso"
+            )
+        else:
+            flash(
+                "Profissional desativado com sucesso!",
+                "sucesso"
+            )
+
+    except Exception:
+        banco.rollback()
+        app.logger.exception(
+            "Erro ao alterar situação do profissional."
+        )
+        flash(
+            "Não foi possível alterar a situação da conta.",
+            "erro"
+        )
+
+    return redirect(
+        url_for("gerenciar_profissionais")
     )
 
 
